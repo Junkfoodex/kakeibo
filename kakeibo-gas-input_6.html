@@ -551,38 +551,36 @@ function compressImage(file, maxWidth) {
 }
 
 // ============================================================
-// JSONP共通送信関数
+// GASリクエスト（fetch方式）
 // ============================================================
-function jsonpRequest(params, timeoutMs) {
+async function gasRequest(params, timeoutMs) {
   timeoutMs = timeoutMs || 20000;
-  return new Promise(function(resolve, reject) {
-    if (!gasUrl) { reject(new Error('GAS URLが未設定です')); return; }
-    var callbackName = 'gasCallback_' + Date.now();
-    var script;
-    var timer = setTimeout(function() {
-      cleanup();
-      reject(new Error('タイムアウト（' + (timeoutMs/1000) + '秒）'));
-    }, timeoutMs);
-    function cleanup() {
-      clearTimeout(timer);
-      delete window[callbackName];
-      if (script && script.parentNode) script.parentNode.removeChild(script);
-    }
-    window[callbackName] = function(data) {
-      cleanup();
-      if (data && data.success) resolve(data);
-      else reject(new Error((data && data.message) || '失敗しました'));
-    };
-    params.callback = callbackName;
-    var qs = Object.keys(params).map(function(k) {
-      return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]);
-    }).join('&');
-    script = document.createElement('script');
-    script.src = gasUrl + '?' + qs;
-    script.onerror = function() { cleanup(); reject(new Error('通信エラー')); };
-    document.body.appendChild(script);
-  });
+  if (!gasUrl) throw new Error('GAS URLが未設定です');
+  const qs = Object.keys(params).map(k =>
+    encodeURIComponent(k) + '=' + encodeURIComponent(params[k])
+  ).join('&');
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(gasUrl + '?' + qs, {
+      signal: controller.signal,
+      redirect: 'follow'
+    });
+    clearTimeout(timer);
+    const text = await response.text();
+    // JSONP形式（callback(...)）の場合は中身を取り出す
+    const match = text.match(/^[^(]+\(([\s\S]*)\)$/);
+    const data = JSON.parse(match ? match[1] : text);
+    if (data && data.success) return data;
+    throw new Error((data && data.message) || '失敗しました');
+  } catch(err) {
+    clearTimeout(timer);
+    if (err.name === 'AbortError') throw new Error('タイムアウト（' + (timeoutMs/1000) + '秒）');
+    throw err;
+  }
 }
+// 後方互換のためのエイリアス
+function jsonpRequest(params, timeoutMs) { return gasRequest(params, timeoutMs); }
 
 // ============================================================
 // AI解析（GAS経由でGemini）
