@@ -809,7 +809,7 @@ async function analyzeSecuritiesPhoto() {
   document.getElementById('secLoading').classList.add('show');
   document.getElementById('secError').classList.remove('show');
   try {
-    const base64 = await compressImage(secFile, 480);
+    const base64 = await compressImage(secFile, 320);
     const prompt = `このスクリーンショットは日本の証券アプリです。以下の情報を抽出しJSONのみで返してください（説明文不要）：
 {"securities_type":"楽天証券 または SBI証券 または 確定拠出年金","hyoka_gaku":数値,"shutoku_gaku":数値}
 
