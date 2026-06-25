@@ -583,15 +583,46 @@ async function gasRequest(params, timeoutMs) {
 function jsonpRequest(params, timeoutMs) { return gasRequest(params, timeoutMs); }
 
 // ============================================================
+// POST送信（画像など大きなデータ用）
+// ============================================================
+async function postRequest(params, timeoutMs) {
+  timeoutMs = timeoutMs || 50000;
+  if (!gasUrl) throw new Error('GAS URLが未設定です');
+  const body = Object.keys(params).map(k =>
+    encodeURIComponent(k) + '=' + encodeURIComponent(params[k])
+  ).join('&');
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(gasUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body,
+      signal: controller.signal,
+      redirect: 'follow'
+    });
+    clearTimeout(timer);
+    const text = await response.text();
+    const data = JSON.parse(text);
+    if (data && data.success) return data;
+    throw new Error((data && data.message) || '失敗しました');
+  } catch(err) {
+    clearTimeout(timer);
+    if (err.name === 'AbortError') throw new Error('タイムアウト（' + (timeoutMs/1000) + '秒）');
+    throw err;
+  }
+}
+
+// ============================================================
 // AI解析（GAS経由でGemini）
 // ============================================================
 async function callImageAI(base64, prompt) {
-  const data = await jsonpRequest({
+  const data = await postRequest({
     action: 'analyzeImage',
     imageData: base64,
     mediaType: 'image/jpeg',
     prompt: prompt
-  }, 30000);
+  }, 50000);
   return data.text;
 }
 
@@ -809,7 +840,7 @@ async function analyzeSecuritiesPhoto() {
   document.getElementById('secLoading').classList.add('show');
   document.getElementById('secError').classList.remove('show');
   try {
-    const base64 = await compressImage(secFile, 320);
+    const base64 = await compressImage(secFile, 240);
     const prompt = `このスクリーンショットは日本の証券アプリです。以下の情報を抽出しJSONのみで返してください（説明文不要）：
 {"securities_type":"楽天証券 または SBI証券 または 確定拠出年金","hyoka_gaku":数値,"shutoku_gaku":数値}
 
