@@ -104,6 +104,14 @@ header p { font-size: 11px; color: var(--text-soft); margin-top: 6px; }
   font-family: inherit; font-size: 12px; font-weight: 700;
   cursor: pointer;
 }
+.ai-setup-note {
+  background: rgba(184,146,63,0.1);
+  border: 1px solid rgba(184,146,63,0.25);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 11px; color: #d4b86a;
+  line-height: 1.7; margin-top: 10px;
+}
 
 .input-tabs {
   display: flex; gap: 6px;
@@ -222,20 +230,13 @@ select.csv-bank, select.sec-month-sel {
 .success-msg.show { display: block; }
 
 /* 証券テーブル */
-.sec-table {
-  display: none;
-  margin-top: 14px;
-  border-radius: 10px;
-  overflow: hidden;
-  border: 1px solid rgba(255,255,255,0.08);
-}
+.sec-table { display: none; margin-top: 14px; border-radius: 10px; overflow: hidden; border: 1px solid rgba(255,255,255,0.08); }
 .sec-table.show { display: block; }
 .sec-table table { width: 100%; border-collapse: collapse; font-size: 12px; }
 .sec-table thead tr { background: rgba(184,146,63,0.2); }
 .sec-table th { padding: 10px 8px; text-align: right; font-weight: 600; color: var(--gold); font-size: 11px; }
 .sec-table th:first-child { text-align: left; }
 .sec-table tbody tr { border-top: 1px solid rgba(255,255,255,0.06); }
-.sec-table tbody tr:hover { background: rgba(255,255,255,0.03); }
 .sec-table td { padding: 6px 8px; vertical-align: middle; }
 .sec-table td:first-child { font-size: 12px; font-weight: 500; }
 .sec-table input[type=number] {
@@ -248,17 +249,10 @@ select.csv-bank, select.sec-month-sel {
 .sec-table .gain { font-family: 'DM Mono', monospace; text-align: right; font-size: 12px; }
 .sec-table .gain.positive { color: var(--celadon); }
 .sec-table .gain.negative { color: var(--vermillion); }
-.sec-badge {
-  display: inline-block; font-size: 10px; padding: 2px 6px;
-  border-radius: 4px; margin-left: 4px;
-  background: rgba(91,138,114,0.3); color: #a8c9b5;
-}
+.sec-badge { display: inline-block; font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-left: 4px; background: rgba(91,138,114,0.3); color: #a8c9b5; }
 
 .recent-list { display: flex; flex-direction: column; gap: 1px; }
-.recent-item {
-  background: var(--paper); color: var(--ink);
-  padding: 12px 16px; display: flex; align-items: center; gap: 12px;
-}
+.recent-item { background: var(--paper); color: var(--ink); padding: 12px 16px; display: flex; align-items: center; gap: 12px; }
 .recent-item:first-child { border-radius: 14px 14px 0 0; }
 .recent-item:last-child { border-radius: 0 0 14px 14px; }
 .recent-item:only-child { border-radius: 14px; }
@@ -288,7 +282,7 @@ select.csv-bank, select.sec-month-sel {
 
   <div class="security-note">
     <span class="icon">🔒</span>
-    <span>確定した明細は、お使いのGoogleスプレッドシートに直接書き込まれます。データの保存先は自分のGoogleアカウント内のみです。写真・CSVを解析する際だけ、画像/テキストがAI解析のために送信されます。</span>
+    <span>データはGoogleスプレッドシートに直接保存されます。写真・CSV解析はGAS経由でGoogle Gemini AIを使用します。</span>
   </div>
 
   <!-- 設定カード -->
@@ -297,12 +291,14 @@ select.csv-bank, select.sec-month-sel {
       <div class="status-dot" id="statusDot"></div>
       <h3>スプレッドシートとの連携</h3>
     </div>
-    <p id="setupDesc">GAS WebアプリURLとAnthropicのAPIキーを設定してください。</p>
+    <p id="setupDesc">GAS WebアプリURLを設定してください。</p>
     <label>GAS WebアプリURL</label>
     <input type="text" id="gasUrl" placeholder="https://script.google.com/macros/s/.../exec">
-    <label>Anthropic APIキー（写真・CSV・証券AI解析に使用）</label>
-    <input type="password" id="anthropicKey" placeholder="sk-ant-...">
     <button class="btn-connect" onclick="saveSettings()">保存する</button>
+    <div class="ai-setup-note">
+      📸 写真・CSV・証券スクショ解析を使うには、GASエディタで <strong>setupGeminiApiKey()</strong> を一度だけ実行してください。<br>
+      APIキーの取得：<strong>aistudio.google.com</strong>（Googleアカウントで無料）
+    </div>
   </div>
 
   <!-- 入力方法タブ -->
@@ -335,8 +331,8 @@ select.csv-bank, select.sec-month-sel {
 
     <!-- 写真 -->
     <div class="input-panel" id="panel-photo">
-      <div class="upload-zone" id="photoZone">
-        <input type="file" id="photoInput" accept="image/*">
+      <div class="upload-zone">
+        <input type="file" id="photoInput" accept="image/*,application/pdf">
         <div class="icon">📷</div>
         <h3>レシート・明細の写真</h3>
         <p>レシート、クレカ明細、銀行アプリのスクショなど</p>
@@ -345,8 +341,8 @@ select.csv-bank, select.sec-month-sel {
         <span>📎</span><span class="name" id="photoName"></span>
         <button onclick="clearPhoto()">✕</button>
       </div>
-      <button class="btn-analyze" id="photoAnalyzeBtn" onclick="analyzePhoto()">🔍 読み取る</button>
-      <div class="loading-inline" id="photoLoading"><div class="spinner-sm"></div>解析中...</div>
+      <button class="btn-analyze" id="photoAnalyzeBtn" onclick="analyzePhoto()">🔍 読み取る（AI解析）</button>
+      <div class="loading-inline" id="photoLoading"><div class="spinner-sm"></div>GAS経由でAI解析中...</div>
       <div class="error-msg" id="photoError"></div>
       <div class="review-list" id="photoReview"></div>
       <button class="btn-confirm-all" id="photoConfirmBtn" onclick="confirmReview('photo')">スプレッドシートに追加</button>
@@ -366,7 +362,7 @@ select.csv-bank, select.sec-month-sel {
         <option value="viewカード">viewカード</option>
         <option value="三井住友カード">三井住友カード</option>
       </select>
-      <div class="upload-zone" id="csvZone">
+      <div class="upload-zone">
         <input type="file" id="csvInput" accept=".csv,.txt">
         <div class="icon">📄</div>
         <h3>明細CSVファイル</h3>
@@ -376,8 +372,8 @@ select.csv-bank, select.sec-month-sel {
         <span>📄</span><span class="name" id="csvName"></span>
         <button onclick="clearCSV()">✕</button>
       </div>
-      <button class="btn-analyze" id="csvAnalyzeBtn" onclick="analyzeCSV()">🔍 読み取る</button>
-      <div class="loading-inline" id="csvLoading"><div class="spinner-sm"></div>解析中...</div>
+      <button class="btn-analyze" id="csvAnalyzeBtn" onclick="analyzeCSV()">🔍 読み取る（AI解析）</button>
+      <div class="loading-inline" id="csvLoading"><div class="spinner-sm"></div>GAS経由でAI解析中...</div>
       <div class="error-msg" id="csvError"></div>
       <div class="review-list" id="csvReview"></div>
       <button class="btn-confirm-all" id="csvConfirmBtn" onclick="confirmReview('csv')">スプレッドシートに追加</button>
@@ -391,8 +387,8 @@ select.csv-bank, select.sec-month-sel {
         <select class="sec-month-sel" id="secMonth"></select>
       </div>
 
-      <div class="upload-zone" id="secZone">
-        <input type="file" id="secInput" accept="image/*">
+      <div class="upload-zone">
+        <input type="file" id="secInput" accept="image/*,application/pdf">
         <div class="icon">📱</div>
         <h3>証券アプリのスクリーンショット</h3>
         <p>楽天証券・SBI証券・確定拠出年金の画面を1枚ずつ読み取ります</p>
@@ -401,11 +397,10 @@ select.csv-bank, select.sec-month-sel {
         <span>📎</span><span class="name" id="secPhotoName"></span>
         <button onclick="clearSecPhoto()">✕</button>
       </div>
-      <button class="btn-analyze" id="secAnalyzeBtn" onclick="analyzeSecuritiesPhoto()">🔍 読み取る</button>
-      <div class="loading-inline" id="secLoading"><div class="spinner-sm"></div>解析中（証券種別・評価額・取得金額を読み取っています）...</div>
+      <button class="btn-analyze" id="secAnalyzeBtn" onclick="analyzeSecuritiesPhoto()">🔍 読み取る（AI解析）</button>
+      <div class="loading-inline" id="secLoading"><div class="spinner-sm"></div>GAS経由でAI解析中（証券種別・評価額・取得金額を読み取り中）...</div>
       <div class="error-msg" id="secError"></div>
 
-      <!-- 証券データテーブル -->
       <div class="sec-table" id="secTable">
         <table>
           <thead>
@@ -440,8 +435,8 @@ select.csv-bank, select.sec-month-sel {
       </div>
 
       <p style="font-size:10px;color:var(--text-soft);margin-top:8px;line-height:1.6">
-        ※ 評価額 → 月別シートの C31/C32/C33、取得金額 → E31/E32/E33 に保存されます。<br>
-        ※ スクショを1枚ずつ読み取ると、該当行が自動入力されます。手動入力も可能です。
+        ※ 評価額 → C31/C32/C33、取得金額 → E31/E32/E33 に保存。<br>
+        ※ スクショを1枚ずつ読み取ると該当行が自動入力。手動入力も可。
       </p>
 
       <button class="btn-confirm-all show" id="secConfirmBtn" onclick="confirmSecurities()" style="background:var(--celadon)">スプレッドシートに保存</button>
@@ -473,16 +468,13 @@ let manualType = 'expense';
 let photoFile = null, csvFile = null, secFile = null;
 let reviewData = { photo: [], csv: [] };
 let recentEntries = [];
-let gasUrl = '', anthropicKey = '';
+let gasUrl = '';
 
 function init() {
   document.getElementById('mDate').value = new Date().toISOString().slice(0,10);
   updateCategoryOptions();
-  // ローカルストレージから設定を読み込む
   gasUrl = localStorage.getItem('gasUrl') || '';
-  anthropicKey = localStorage.getItem('anthropicKey') || '';
   if (gasUrl) document.getElementById('gasUrl').value = gasUrl;
-  if (anthropicKey) document.getElementById('anthropicKey').value = anthropicKey;
   updateConnectionStatus();
   initSecMonth();
 }
@@ -506,15 +498,12 @@ function switchTab(btn) {
 
 function saveSettings() {
   const url = document.getElementById('gasUrl').value.trim();
-  const key = document.getElementById('anthropicKey').value.trim();
   if (url && !url.startsWith('https://script.google.com/')) {
     alert('正しいGAS WebアプリURLを入力してください');
     return;
   }
   gasUrl = url;
-  anthropicKey = key;
   if (url) localStorage.setItem('gasUrl', url);
-  if (key) localStorage.setItem('anthropicKey', key);
   updateConnectionStatus();
 }
 
@@ -522,146 +511,105 @@ function updateConnectionStatus() {
   const dot = document.getElementById('statusDot');
   const desc = document.getElementById('setupDesc');
   const card = document.getElementById('setupCard');
-  const connected = !!(gasUrl && anthropicKey);
-  dot.classList.toggle('ok', connected);
-  card.classList.toggle('connected', connected);
-  if (connected) {
-    desc.textContent = '✅ 接続済みです。';
-  } else if (gasUrl && !anthropicKey) {
-    desc.textContent = '⚠️ GAS URLは設定済みです。AI解析にはAnthropicのAPIキーも必要です。';
-  } else {
-    desc.textContent = 'GAS WebアプリURLとAnthropicのAPIキーを設定してください。';
-  }
+  dot.classList.toggle('ok', !!gasUrl);
+  card.classList.toggle('connected', !!gasUrl);
+  desc.textContent = gasUrl
+    ? '✅ 接続済みです。写真・CSV・証券解析を使うには GAS で setupGeminiApiKey() を実行してください。'
+    : 'GAS WebアプリURLを設定してください。';
   document.getElementById('manualSubmitBtn').disabled = !gasUrl;
-  document.getElementById('photoConfirmBtn').disabled = !gasUrl;
-  document.getElementById('csvConfirmBtn').disabled = !gasUrl;
   document.getElementById('secConfirmBtn').disabled = !gasUrl;
 }
 
-// ===== JSONP送信（既存エントリ） =====
-function sendToSheet(entries) {
-  return new Promise((resolve, reject) => {
+// ============================================================
+// 画像圧縮（canvas）
+// ============================================================
+function compressImage(file, maxWidth) {
+  maxWidth = maxWidth || 480;
+  return new Promise(function(resolve, reject) {
+    var img = new Image();
+    var objectUrl = URL.createObjectURL(file);
+    img.onload = function() {
+      URL.revokeObjectURL(objectUrl);
+      var scale = Math.min(1, maxWidth / img.width);
+      var w = Math.round(img.width * scale);
+      var h = Math.round(img.height * scale);
+      var canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      var base64 = canvas.toDataURL('image/jpeg', 0.40).split(',')[1];
+      // サイズが大きすぎる場合、さらに圧縮
+      if (base64.length > 35000) {
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        base64 = canvas.toDataURL('image/jpeg', 0.25).split(',')[1];
+      }
+      resolve(base64);
+    };
+    img.onerror = function() { URL.revokeObjectURL(objectUrl); reject(new Error('画像の読み込みに失敗しました')); };
+    img.src = objectUrl;
+  });
+}
+
+// ============================================================
+// JSONP共通送信関数
+// ============================================================
+function jsonpRequest(params, timeoutMs) {
+  timeoutMs = timeoutMs || 20000;
+  return new Promise(function(resolve, reject) {
     if (!gasUrl) { reject(new Error('GAS URLが未設定です')); return; }
-    const callbackName = 'gasCallback_' + Date.now();
-    const timeout = setTimeout(() => { cleanup(); reject(new Error('タイムアウト')); }, 15000);
+    var callbackName = 'gasCallback_' + Date.now();
+    var script;
+    var timer = setTimeout(function() {
+      cleanup();
+      reject(new Error('タイムアウト（' + (timeoutMs/1000) + '秒）'));
+    }, timeoutMs);
     function cleanup() {
-      clearTimeout(timeout);
+      clearTimeout(timer);
       delete window[callbackName];
-      if (script.parentNode) script.parentNode.removeChild(script);
+      if (script && script.parentNode) script.parentNode.removeChild(script);
     }
     window[callbackName] = function(data) {
       cleanup();
       if (data && data.success) resolve(data);
-      else reject(new Error((data && data.message) || '保存に失敗しました'));
+      else reject(new Error((data && data.message) || '失敗しました'));
     };
-    const params = new URLSearchParams({ entries: JSON.stringify(entries), callback: callbackName });
-    const script = document.createElement('script');
-    script.src = gasUrl + '?' + params.toString();
-    script.onerror = () => { cleanup(); reject(new Error('通信エラー')); };
+    params.callback = callbackName;
+    var qs = Object.keys(params).map(function(k) {
+      return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]);
+    }).join('&');
+    script = document.createElement('script');
+    script.src = gasUrl + '?' + qs;
+    script.onerror = function() { cleanup(); reject(new Error('通信エラー')); };
     document.body.appendChild(script);
   });
 }
 
-// ===== JSONP送信（セル直接書き込み） =====
-// GASエンドポイントで action=setCells に対応させる必要があります
-function sendCellsToSheet(sheetName, cells) {
-  return new Promise((resolve, reject) => {
-    if (!gasUrl) { reject(new Error('GAS URLが未設定です')); return; }
-    const callbackName = 'gasCallback_' + Date.now();
-    const timeout = setTimeout(() => { cleanup(); reject(new Error('タイムアウト')); }, 15000);
-    function cleanup() {
-      clearTimeout(timeout);
-      delete window[callbackName];
-      if (script.parentNode) script.parentNode.removeChild(script);
-    }
-    window[callbackName] = function(data) {
-      cleanup();
-      if (data && data.success) resolve(data);
-      else reject(new Error((data && data.message) || '保存に失敗しました'));
-    };
-    const params = new URLSearchParams({
-      action: 'setCells',
-      sheetName: sheetName,
-      cells: JSON.stringify(cells),
-      callback: callbackName
-    });
-    const script = document.createElement('script');
-    script.src = gasUrl + '?' + params.toString();
-    script.onerror = () => { cleanup(); reject(new Error('通信エラー')); };
-    document.body.appendChild(script);
-  });
+// ============================================================
+// AI解析（GAS経由でGemini）
+// ============================================================
+async function callImageAI(base64, prompt) {
+  const data = await jsonpRequest({
+    action: 'analyzeImage',
+    imageData: base64,
+    mediaType: 'image/jpeg',
+    prompt: prompt
+  }, 30000);
+  return data.text;
 }
 
-// ===== AI解析共通 =====
-async function callAI(messages, maxTokens = 1000) {
-  if (!anthropicKey) throw new Error('AnthropicのAPIキーが設定されていません（設定欄を確認してください）');
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': anthropicKey,
-      'anthropic-version': '2023-06-01'
-    },
-    body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: maxTokens, messages })
-  });
-  const data = await response.json();
-  if (data.error) throw new Error(data.error.message);
-  return data.content.map(i => i.text || '').join('');
+async function callTextAI(text, prompt) {
+  const data = await jsonpRequest({
+    action: 'analyzeText',
+    textData: text.slice(0, 8000),
+    prompt: prompt
+  }, 30000);
+  return data.text;
 }
 
-function addToRecent(entries) {
-  entries.forEach(e => recentEntries.unshift(e));
-  recentEntries = recentEntries.slice(0, 10);
-  renderRecent();
-}
-function renderRecent() {
-  if (!recentEntries.length) return;
-  document.getElementById('recentSection').style.display = 'block';
-  document.getElementById('recentList').innerHTML = recentEntries.map(e => `
-    <div class="recent-item">
-      <div class="recent-dot" style="background:${CATEGORY_COLORS[e.category]||'#999'}"></div>
-      <div class="recent-info">
-        <div class="recent-desc">${escapeHtml(e.description)}</div>
-        <div class="recent-meta">${e.date} ・ ${e.category}</div>
-      </div>
-      <div class="recent-amt ${e.type}">${e.type==='income'?'+':'-'}¥${Number(e.amount).toLocaleString()}</div>
-    </div>
-  `).join('');
-}
-
-// ===== 手入力 =====
-async function addManualEntry() {
-  const amount = Number(document.getElementById('mAmount').value);
-  const desc = document.getElementById('mDesc').value.trim();
-  if (!amount || !desc) { alert('内容と金額を入力してください'); return; }
-  const entry = {
-    date: document.getElementById('mDate').value,
-    description: desc,
-    category: document.getElementById('mCategory').value,
-    type: manualType,
-    amount
-  };
-  const btn = document.getElementById('manualSubmitBtn');
-  const successEl = document.getElementById('manualSuccess');
-  const errorEl = document.getElementById('manualError');
-  successEl.classList.remove('show'); errorEl.classList.remove('show');
-  btn.disabled = true;
-  try {
-    await sendToSheet([entry]);
-    successEl.textContent = '✅ 送信しました。スプレッドシートをご確認ください';
-    successEl.classList.add('show');
-    addToRecent([entry]);
-    document.getElementById('mAmount').value = '';
-    document.getElementById('mDesc').value = '';
-  } catch (err) {
-    errorEl.textContent = 'エラー: ' + err.message;
-    errorEl.classList.add('show');
-  }
-  btn.disabled = !gasUrl;
-}
-
-// ===== 写真 =====
-document.getElementById('photoInput').addEventListener('change', e => {
+// ============================================================
+// 写真
+// ============================================================
+document.getElementById('photoInput').addEventListener('change', function(e) {
   if (e.target.files[0]) {
     photoFile = e.target.files[0];
     document.getElementById('photoName').textContent = photoFile.name;
@@ -683,33 +631,30 @@ async function analyzePhoto() {
   document.getElementById('photoLoading').classList.add('show');
   document.getElementById('photoError').classList.remove('show');
   try {
-    const base64 = await fileToBase64(photoFile);
-    const mediaType = photoFile.type || 'image/jpeg';
+    const base64 = await compressImage(photoFile, 480);
     const prompt = `この画像はレシート・クレジットカード明細・銀行アプリのスクリーンショットです。
 全ての取引明細を読み取り、次のJSON形式のみで返してください（説明文不要）：
 {"entries":[{"date":"2026-06-15","description":"店名・内容","category":"食費/日用品/交通費/光熱費/通信費/医療費/住居費/保険/娯楽/教育/給与/ボーナス/副業/その他収入/その他のいずれか","type":"expense または income","amount":1500}]}
 日付が不明な場合は今日の日付(${new Date().toISOString().slice(0,10)})を使用。金額は数値のみ。`;
-    const text = await callAI([{ role: 'user', content: [
-      { type: 'image', source: { type:'base64', media_type: mediaType, data: base64 } },
-      { type: 'text', text: prompt }
-    ]}]);
+    const text = await callImageAI(base64, prompt);
     const parsed = JSON.parse(text.replace(/```json|```/g,'').trim());
     reviewData.photo = parsed.entries || [];
-    document.getElementById('photoLoading').classList.remove('show');
     if (!reviewData.photo.length) {
       showError('photoError', '明細を検出できませんでした。');
     } else {
       renderReview('photo');
     }
   } catch(err) {
-    document.getElementById('photoLoading').classList.remove('show');
     showError('photoError', 'エラー: ' + err.message);
   }
+  document.getElementById('photoLoading').classList.remove('show');
   document.getElementById('photoAnalyzeBtn').disabled = false;
 }
 
-// ===== CSV =====
-document.getElementById('csvInput').addEventListener('change', e => {
+// ============================================================
+// CSV
+// ============================================================
+document.getElementById('csvInput').addEventListener('change', function(e) {
   if (e.target.files[0]) {
     csvFile = e.target.files[0];
     document.getElementById('csvName').textContent = csvFile.name;
@@ -735,24 +680,25 @@ async function analyzeCSV() {
     const bankName = document.getElementById('csvBank').value;
     const prompt = `以下は${bankName}の取引明細CSVです。全取引を読み取り、次のJSON形式のみで返してください：
 {"entries":[{"date":"2026-06-15","description":"内容","category":"食費/日用品/交通費/光熱費/通信費/医療費/住居費/保険/娯楽/教育/給与/ボーナス/副業/その他収入/その他のいずれか","type":"expense または income","amount":1500}]}
-金額は正の数値のみ。CSV:\n\`\`\`\n${text.slice(0,8000)}\n\`\`\``;
-    const rawText = await callAI([{ role: 'user', content: prompt }]);
+金額は正の数値のみ。CSV:`;
+    const rawText = await callTextAI(text, prompt);
     const parsed = JSON.parse(rawText.replace(/```json|```/g,'').trim());
     reviewData.csv = parsed.entries || [];
-    document.getElementById('csvLoading').classList.remove('show');
     if (!reviewData.csv.length) {
       showError('csvError', '取引データが見つかりませんでした。');
     } else {
       renderReview('csv');
     }
   } catch(err) {
-    document.getElementById('csvLoading').classList.remove('show');
     showError('csvError', 'エラー: ' + err.message);
   }
+  document.getElementById('csvLoading').classList.remove('show');
   document.getElementById('csvAnalyzeBtn').disabled = false;
 }
 
-// ===== レビュー表示・確定 =====
+// ============================================================
+// レビュー
+// ============================================================
 function renderReview(kind) {
   const list = document.getElementById(kind + 'Review');
   const allCats = [...CATEGORIES.expense, ...CATEGORIES.income];
@@ -779,7 +725,7 @@ async function confirmReview(kind) {
   const successEl = document.getElementById(kind + 'Success');
   btn.disabled = true;
   try {
-    await sendToSheet(reviewData[kind]);
+    await jsonpRequest({ entries: JSON.stringify(reviewData[kind]) });
     successEl.textContent = `✅ ${reviewData[kind].length}件を送信しました。`;
     successEl.classList.add('show');
     addToRecent(reviewData[kind]);
@@ -794,7 +740,40 @@ async function confirmReview(kind) {
   btn.disabled = !gasUrl;
 }
 
-// ===== 証券スクリーンショット =====
+// ============================================================
+// 手入力
+// ============================================================
+async function addManualEntry() {
+  const amount = Number(document.getElementById('mAmount').value);
+  const desc = document.getElementById('mDesc').value.trim();
+  if (!amount || !desc) { alert('内容と金額を入力してください'); return; }
+  const entry = {
+    date: document.getElementById('mDate').value,
+    description: desc,
+    category: document.getElementById('mCategory').value,
+    type: manualType,
+    amount
+  };
+  const btn = document.getElementById('manualSubmitBtn');
+  document.getElementById('manualSuccess').classList.remove('show');
+  document.getElementById('manualError').classList.remove('show');
+  btn.disabled = true;
+  try {
+    await jsonpRequest({ entries: JSON.stringify([entry]) });
+    document.getElementById('manualSuccess').textContent = '✅ 送信しました。';
+    document.getElementById('manualSuccess').classList.add('show');
+    addToRecent([entry]);
+    document.getElementById('mAmount').value = '';
+    document.getElementById('mDesc').value = '';
+  } catch (err) {
+    showError('manualError', 'エラー: ' + err.message);
+  }
+  btn.disabled = !gasUrl;
+}
+
+// ============================================================
+// 証券スクリーンショット
+// ============================================================
 function initSecMonth() {
   const sel = document.getElementById('secMonth');
   const now = new Date();
@@ -805,12 +784,12 @@ function initSecMonth() {
     const sheetName = yy + mm;
     const opt = document.createElement('option');
     opt.value = sheetName;
-    opt.textContent = `${d.getFullYear()}年${d.getMonth() + 1}月（シート名: ${sheetName}）`;
+    opt.textContent = `${d.getFullYear()}年${d.getMonth() + 1}月（シート: ${sheetName}）`;
     sel.appendChild(opt);
   }
 }
 
-document.getElementById('secInput').addEventListener('change', e => {
+document.getElementById('secInput').addEventListener('change', function(e) {
   if (e.target.files[0]) {
     secFile = e.target.files[0];
     document.getElementById('secPhotoName').textContent = secFile.name;
@@ -832,8 +811,7 @@ async function analyzeSecuritiesPhoto() {
   document.getElementById('secLoading').classList.add('show');
   document.getElementById('secError').classList.remove('show');
   try {
-    const base64 = await fileToBase64(secFile);
-    const mediaType = secFile.type || 'image/jpeg';
+    const base64 = await compressImage(secFile, 480);
     const prompt = `このスクリーンショットは日本の証券アプリです。以下の情報を抽出しJSONのみで返してください（説明文不要）：
 {"securities_type":"楽天証券 または SBI証券 または 確定拠出年金","hyoka_gaku":数値,"shutoku_gaku":数値}
 
@@ -843,24 +821,16 @@ async function analyzeSecuritiesPhoto() {
 - 確定拠出年金（iDeCo・企業型DC）：「資産残高」「時価評価額」と「拠出金累計」「取得金額」
 - 金額は数値のみ（¥マーク・カンマ不要）
 - 取得金額が画面にない場合は null`;
-    const text = await callAI([{ role: 'user', content: [
-      { type: 'image', source: { type:'base64', media_type: mediaType, data: base64 } },
-      { type: 'text', text: prompt }
-    ]}], 300);
+    const text = await callImageAI(base64, prompt);
     const parsed = JSON.parse(text.replace(/```json|```/g,'').trim());
     const type = parsed.securities_type || '';
     let key = null;
     if (type.includes('楽天')) key = 'rakuten';
     else if (/SBI|sbi/i.test(type)) key = 'sbi';
     else if (type.includes('確定') || type.includes('拠出')) key = 'kakuteikyo';
-    if (!key) throw new Error('証券会社を特定できませんでした（読み取り結果: ' + type + '）');
-
-    if (parsed.hyoka_gaku) {
-      document.getElementById(`sec-${key}-hyoka`).value = parsed.hyoka_gaku;
-    }
-    if (parsed.shutoku_gaku) {
-      document.getElementById(`sec-${key}-shutoku`).value = parsed.shutoku_gaku;
-    }
+    if (!key) throw new Error('証券会社を特定できませんでした（' + type + '）');
+    if (parsed.hyoka_gaku) document.getElementById(`sec-${key}-hyoka`).value = parsed.hyoka_gaku;
+    if (parsed.shutoku_gaku) document.getElementById(`sec-${key}-shutoku`).value = parsed.shutoku_gaku;
     updateUnrealized(key);
     document.getElementById(`badge-${key}`).style.display = 'inline-block';
     document.getElementById('secTable').classList.add('show');
@@ -891,11 +861,11 @@ async function confirmSecurities() {
   const sheetName = document.getElementById('secMonth').value;
   const cells = [];
   const mapping = [
-    { key: 'rakuten',     hyokaCell: 'C31', shutokuCell: 'E31' },
-    { key: 'sbi',         hyokaCell: 'C32', shutokuCell: 'E32' },
-    { key: 'kakuteikyo',  hyokaCell: 'C33', shutokuCell: 'E33' }
+    { key: 'rakuten',    hyokaCell: 'C31', shutokuCell: 'E31' },
+    { key: 'sbi',        hyokaCell: 'C32', shutokuCell: 'E32' },
+    { key: 'kakuteikyo', hyokaCell: 'C33', shutokuCell: 'E33' }
   ];
-  mapping.forEach(({ key, hyokaCell, shutokuCell }) => {
+  mapping.forEach(function({ key, hyokaCell, shutokuCell }) {
     const hyoka = Number(document.getElementById(`sec-${key}-hyoka`).value);
     const shutoku = Number(document.getElementById(`sec-${key}-shutoku`).value);
     if (hyoka) cells.push({ cell: hyokaCell, value: hyoka });
@@ -904,37 +874,48 @@ async function confirmSecurities() {
   if (!cells.length) { alert('入力されているデータがありません'); return; }
 
   const btn = document.getElementById('secConfirmBtn');
-  const successEl = document.getElementById('secSuccess');
-  const errorEl = document.getElementById('secError');
-  successEl.classList.remove('show');
-  errorEl.classList.remove('show');
+  document.getElementById('secSuccess').classList.remove('show');
+  document.getElementById('secError').classList.remove('show');
   btn.disabled = true;
   try {
-    await sendCellsToSheet(sheetName, cells);
-    successEl.textContent = `✅ ${sheetName}シートに${cells.length}件保存しました。ダッシュボードを再実行して反映してください。`;
-    successEl.classList.add('show');
+    await jsonpRequest({ action: 'setCells', sheetName: sheetName, cells: JSON.stringify(cells) });
+    document.getElementById('secSuccess').textContent = `✅ ${sheetName}シートに${cells.length}件保存しました。ダッシュボードを再実行してください。`;
+    document.getElementById('secSuccess').classList.add('show');
   } catch(err) {
     showError('secError', 'エラー: ' + err.message);
   }
   btn.disabled = !gasUrl;
 }
 
-// ===== ユーティリティ =====
+// ============================================================
+// ユーティリティ
+// ============================================================
 function showError(id, msg) {
   const el = document.getElementById(id);
   el.textContent = msg;
   el.classList.add('show');
 }
-function escapeHtml(str) { const div = document.createElement('div'); div.textContent = str; return div.innerHTML; }
 function escapeAttr(str) { return String(str).replace(/"/g, '&quot;'); }
-function fileToBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result.split(',')[1]);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
+function addToRecent(entries) {
+  entries.forEach(e => recentEntries.unshift(e));
+  recentEntries = recentEntries.slice(0, 10);
+  renderRecent();
 }
+function renderRecent() {
+  if (!recentEntries.length) return;
+  document.getElementById('recentSection').style.display = 'block';
+  document.getElementById('recentList').innerHTML = recentEntries.map(e => `
+    <div class="recent-item">
+      <div class="recent-dot" style="background:${CATEGORY_COLORS[e.category]||'#999'}"></div>
+      <div class="recent-info">
+        <div class="recent-desc">${escapeHtml(e.description)}</div>
+        <div class="recent-meta">${e.date} ・ ${e.category}</div>
+      </div>
+      <div class="recent-amt ${e.type}">${e.type==='income'?'+':'-'}¥${Number(e.amount).toLocaleString()}</div>
+    </div>
+  `).join('');
+}
+function escapeHtml(str) { const div = document.createElement('div'); div.textContent = str; return div.innerHTML; }
 function readCSVText(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
