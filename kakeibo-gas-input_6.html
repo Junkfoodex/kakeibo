@@ -853,26 +853,28 @@ async function analyzeSecuritiesPhotos() {
       `AI解析中... (${i + 1}/${secFiles.length}: ${secFiles[i].name})`;
     try {
       const base64 = await compressImage(secFiles[i], 640);
-      const prompt = `このスクリーンショットは証券口座・銀行の保有状況です。
-以下のJSONのみで返してください（説明文不要）：
-{"company":"証券会社名","holdings":[{"name":"銘柄名","quantity":数値,"unit_price":数値またはnull,"investment":数値またはnull,"current_unit_price":数値またはnull,"current_value":数値,"unrealized_gain":数値またはnull,"return_rate":数値またはnull}]}
-
-ルール：
-- company: 画面から判断できる証券会社・銀行名（例:"楽天証券","SBI証券","確定拠出年金"）
-- 全ての保有銘柄をholdingsに含める
-- quantity: 株数・口数（数値のみ）
-- unit_price: 取得単価、investment: 受渡金額・取得金額
-- current_unit_price: 現在単価、current_value: 現在価値・評価額
-- unrealized_gain: 評価損益（マイナスは負の値）
-- return_rate: 騰落率（数値のみ、%・±記号不要）
-- 不明な値はnull、金額にカンマ・¥・円不要`;
+      const prompt = `証券口座の保有状況スクショです。JSONのみ返してください（説明不要）：
+{"co":"証券会社名","h":[{"n":"銘柄名","q":数量,"i":取得金額またはnull,"v":現在価値,"g":評価損益またはnull,"r":騰落率またはnull}]}
+co=会社名(例:楽天証券/SBI証券/確定拠出年金) q=株数 i=取得金額 v=評価額 g=評価損益 r=騰落率(%)
+全銘柄含める。数値のみ(¥カンマ不要)。不明はnull。`;
 
       const text = await callImageAI(base64, prompt);
       const jsonMatch = text.match(/\{[\s\S]*/);
       if (!jsonMatch) { errors.push(`${secFiles[i].name}: JSONを抽出できませんでした`); continue; }
       const parsed = JSON.parse(repairJson(jsonMatch[0]));
-      const company = parsed.company || '不明';
-      (parsed.holdings || []).forEach(h => secHoldings.push({ ...h, company }));
+      const company = parsed.co || parsed.company || '不明';
+      const holdingsList = parsed.h || parsed.holdings || [];
+      holdingsList.forEach(h => secHoldings.push({
+        company,
+        name: h.n || h.name || '',
+        quantity: h.q ?? h.quantity ?? null,
+        unit_price: h.u ?? h.unit_price ?? null,
+        investment: h.i ?? h.investment ?? null,
+        current_unit_price: h.cu ?? h.current_unit_price ?? null,
+        current_value: h.v ?? h.current_value ?? null,
+        unrealized_gain: h.g ?? h.unrealized_gain ?? null,
+        return_rate: h.r ?? h.return_rate ?? null
+      }));
     } catch (err) {
       errors.push(`${secFiles[i].name}: ${err.message}`);
     }
