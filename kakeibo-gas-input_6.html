@@ -452,15 +452,18 @@ select.csv-bank, select.sec-month-sel {
       <div id="portfolioCompareSection" style="margin-top:16px;display:none;padding:14px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:12px;">
         <div style="font-size:13px;font-weight:600;color:var(--paper);margin-bottom:12px;">📊 ポートフォリオ比較</div>
         <div style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center;">
-          <div style="flex:1;min-width:160px;text-align:center;">
+          <div style="flex:1;min-width:140px;text-align:center;">
             <div style="font-size:11px;color:var(--text-soft);margin-bottom:6px;">現在</div>
-            <canvas id="currentPieChart" style="max-width:200px;max-height:200px;"></canvas>
+            <canvas id="currentPieChart" style="max-width:180px;max-height:180px;"></canvas>
           </div>
-          <div style="flex:1;min-width:160px;text-align:center;">
+          <div style="flex:1;min-width:140px;text-align:center;">
             <div style="font-size:11px;color:var(--gold);margin-bottom:6px;">目標</div>
-            <canvas id="targetPieChart" style="max-width:200px;max-height:200px;"></canvas>
+            <canvas id="targetPieChart" style="max-width:180px;max-height:180px;"></canvas>
           </div>
         </div>
+        <!-- 凡例：現在% → 目標% -->
+        <div id="pieChartLegend" style="margin-top:12px;padding:6px 0;"></div>
+        <div style="font-size:10px;color:var(--text-soft);margin-top:4px;">白=現在% ／ <span style="color:var(--gold)">金=目標%</span></div>
       </div>
 
       <!-- 目標ポートフォリオ保存 -->
@@ -1168,7 +1171,7 @@ function drawPieCharts() {
       options: {
         plugins: {
           legend: { display: false },
-          tooltip: { callbacks: { label: ctx => `${ctx.label}: ${ctx.parsed.toLocaleString()}${id === 'targetPieChart' ? '%' : '円'}` } }
+          tooltip: { callbacks: { label: c => `${c.label}: ${c.parsed.toLocaleString()}${id === 'targetPieChart' ? '%' : '円'}` } }
         },
         animation: { duration: 600 }
       }
@@ -1176,6 +1179,22 @@ function drawPieCharts() {
   };
   currentChartInst = makeChart('currentPieChart', currentData, currentChartInst);
   if (hasTarget) targetChartInst = makeChart('targetPieChart', targetData, targetChartInst);
+
+  // 凡例（両チャート共通・現在価値ベース）
+  const legendEl = document.getElementById('pieChartLegend');
+  if (legendEl) {
+    const totalV = currentData.reduce((s, v) => s + v, 0);
+    legendEl.innerHTML = labels.map((name, i) => {
+      const curPct = totalV > 0 ? (currentData[i] / totalV * 100).toFixed(1) : '0.0';
+      const tgtPct = targetData[i] || 0;
+      return `<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.05)">
+        <span style="width:10px;height:10px;border-radius:50%;background:${PIE_COLORS[i % PIE_COLORS.length]};flex-shrink:0;"></span>
+        <span style="flex:1;font-size:11px;color:var(--paper);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${name}</span>
+        <span style="font-size:11px;color:var(--text-soft);font-family:'DM Mono',monospace;white-space:nowrap">${curPct}%</span>
+        ${hasTarget ? `<span style="font-size:11px;color:var(--gold);font-family:'DM Mono',monospace;white-space:nowrap">→${tgtPct}%</span>` : ''}
+      </div>`;
+    }).join('');
+  }
 }
 
 async function saveTargetPortfolio() {
