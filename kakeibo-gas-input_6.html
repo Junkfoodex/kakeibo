@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>家計簿入力</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="家計簿">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1c1b1f">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='36' fill='%231c1b1f'/%3E%3Crect x='30' y='30' width='120' height='120' rx='16' fill='%23c8553d'/%3E%3Ctext x='90' y='112' font-family='serif' font-size='72' font-weight='700' fill='%23f7f3ea' text-anchor='middle'%3E記%3C/text%3E%3C/svg%3E">
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700&family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink: #1c1b1f;
+  --paper: #f7f3ea;
+  --paper-dim: #ece6d8;
+  --vermillion: #c8553d;
+  --celadon: #5b8a72;
+  --gold: #b8923f;
+  --line: #d8cfb8;
+  --text-soft: #6b6558;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Noto Sans JP', sans-serif;
+  background: var(--ink);
+  color: var(--paper);
+  min-height: 100vh;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+header {
+  padding: 26px 20px 18px;
+  text-align: center;
+  position: relative;
+}
+header::after {
+  content: '';
+  position: absolute; bottom: 0; left: 50%;
+  transform: translateX(-50%);
+  width: 48px; height: 1px;
+  background: var(--gold);
+}
+.app-title {
+  font-family: 'Shippori Mincho', serif;
+  font-size: 21px; font-weight: 700;
+  letter-spacing: 0.06em;
+}
+.app-title .stamp {
+  display: inline-block; width: 26px; height: 26px;
+  background: var(--vermillion); border-radius: 4px;
+  color: white; font-size: 13px; line-height: 26px;
+  margin-right: 8px; font-family: 'Shippori Mincho', serif;
+}
+header p { font-size: 11px; color: var(--text-soft); margin-top: 6px; }
+
+.main {
+  max-width: 680px; margin: 0 auto;
+  padding: 20px 16px 60px;
+  display: flex; flex-direction: column; gap: 18px;
+}
+
+.security-note {
+  background: rgba(91,138,114,0.1);
+  border: 1px solid rgba(91,138,114,0.3);
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-size: 11px; color: #a8c9b5;
+  line-height: 1.6;
+  display: flex; gap: 10px; align-items: flex-start;
+}
+.security-note .icon { font-size: 16px; flex-shrink: 0; }
+
+.setup-card {
+  background: var(--paper); color: var(--ink);
+  border-radius: 16px; padding: 18px;
+}
+.setup-card.connected { background: rgba(91,138,114,0.12); }
+.setup-header {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 10px;
+}
+.setup-header h3 {
+  font-family: 'Shippori Mincho', serif;
+  font-size: 13px; font-weight: 700;
+}
+.status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--vermillion); }
+.status-dot.ok { background: var(--celadon); }
+.setup-card p { font-size: 11px; color: var(--text-soft); margin-bottom: 10px; line-height: 1.6; }
+.setup-card input {
+  width: 100%; padding: 10px 12px;
+  border: 1px solid var(--line); border-radius: 8px;
+  font-size: 12px; font-family: 'DM Mono', monospace;
+  margin-bottom: 8px; outline: none;
+  background: white;
+}
+.setup-card input:focus { border-color: var(--gold); }
+.setup-card label { font-size: 10px; color: var(--text-soft); display: block; margin-bottom: 4px; letter-spacing: 0.06em; }
+.btn-connect {
+  background: var(--gold); color: var(--ink);
+  border: none; padding: 9px 16px; border-radius: 8px;
+  font-family: inherit; font-size: 12px; font-weight: 700;
+  cursor: pointer;
+}
+.ai-setup-note {
+  background: rgba(184,146,63,0.1);
+  border: 1px solid rgba(184,146,63,0.25);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 11px; color: #d4b86a;
+  line-height: 1.7; margin-top: 10px;
+}
+
+.input-tabs {
+  display: flex; gap: 6px;
+  background: rgba(255,255,255,0.04);
+  border-radius: 14px; padding: 5px;
+  overflow-x: auto;
+}
+.input-tab {
+  flex: 1; background: none; border: none;
+  padding: 9px 6px; border-radius: 10px;
+  color: var(--text-soft); font-family: inherit; font-size: 11px;
+  cursor: pointer; transition: all 0.15s; white-space: nowrap;
+  min-width: 56px;
+}
+.input-tab.active { background: var(--paper); color: var(--ink); font-weight: 500; }
+
+.input-panel {
+  background: rgba(255,255,255,0.04);
+  border-radius: 16px; padding: 18px;
+  display: none;
+}
+.input-panel.active { display: block; }
+
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+.form-field label { display: block; font-size: 10px; color: var(--text-soft); margin-bottom: 5px; letter-spacing: 0.06em; }
+.form-field input, .form-field select {
+  width: 100%; background: var(--paper); color: var(--ink);
+  border: none; border-radius: 8px; padding: 10px 12px;
+  font-family: 'Noto Sans JP', sans-serif; font-size: 13px; outline: none;
+}
+.type-toggle { display: flex; gap: 8px; margin-bottom: 14px; }
+.type-btn {
+  flex: 1; padding: 10px; border-radius: 8px; border: 2px solid transparent;
+  background: var(--paper); color: var(--text-soft);
+  font-family: inherit; font-size: 13px; cursor: pointer; transition: all 0.15s;
+}
+.type-btn.expense.active { border-color: var(--vermillion); color: var(--vermillion); font-weight: 700; }
+.type-btn.income.active { border-color: var(--celadon); color: var(--celadon); font-weight: 700; }
+
+.btn-submit {
+  width: 100%; margin-top: 6px;
+  padding: 13px; border: none; border-radius: 10px;
+  background: var(--gold); color: var(--ink);
+  font-family: inherit; font-size: 13px; font-weight: 700;
+  cursor: pointer; letter-spacing: 0.05em;
+}
+.btn-submit:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.upload-zone {
+  border: 1.5px dashed var(--line); border-radius: 12px;
+  padding: 26px 16px; text-align: center; cursor: pointer;
+  position: relative; color: var(--text-soft);
+  background: rgba(255,255,255,0.02); transition: all 0.2s;
+}
+.upload-zone:hover { border-color: var(--gold); background: rgba(184,146,63,0.05); }
+.upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.upload-zone .icon { font-size: 28px; margin-bottom: 8px; }
+.upload-zone h3 { font-size: 13px; color: var(--paper); margin-bottom: 4px; }
+.upload-zone p { font-size: 11px; }
+
+select.csv-bank, select.sec-month-sel {
+  width: 100%; background: var(--paper); color: var(--ink);
+  border: none; border-radius: 8px; padding: 10px 12px;
+  font-size: 13px; margin-bottom: 10px; font-family: inherit;
+}
+
+.preview-row {
+  display: none; align-items: center; gap: 10px;
+  background: rgba(255,255,255,0.04); border-radius: 10px;
+  padding: 10px 14px; margin-top: 10px; font-size: 12px;
+}
+.preview-row.show { display: flex; }
+.preview-row .name { flex: 1; }
+.preview-row button { background: none; border: none; color: var(--vermillion); cursor: pointer; font-size: 16px; }
+
+.btn-analyze {
+  width: 100%; margin-top: 10px; padding: 13px;
+  border: none; border-radius: 10px;
+  background: var(--gold); color: var(--ink);
+  font-family: inherit; font-size: 13px; font-weight: 700;
+  cursor: pointer; display: none;
+}
+.btn-analyze.show { display: block; }
+.btn-analyze:disabled { opacity: 0.5; }
+
+.loading-inline { display: none; text-align: center; padding: 16px; font-size: 12px; color: var(--text-soft); }
+.loading-inline.show { display: block; }
+.spinner-sm {
+  width: 22px; height: 22px; border: 2px solid var(--line);
+  border-top-color: var(--gold); border-radius: 50%;
+  margin: 0 auto 8px; animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.review-list { display: none; flex-direction: column; gap: 8px; margin-top: 10px; }
+.review-list.show { display: flex; }
+.review-item { background: var(--paper); color: var(--ink); border-radius: 10px; padding: 10px 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.review-item input, .review-item select { background: var(--paper-dim); border: none; border-radius: 6px; padding: 6px 8px; font-size: 12px; font-family: inherit; }
+.review-item .desc-input { flex: 1; min-width: 90px; }
+.review-item .amt-input { width: 75px; font-family: 'DM Mono', monospace; }
+.review-item .remove-btn { background: none; border: none; color: var(--vermillion); cursor: pointer; font-size: 15px; padding: 2px; }
+
+.btn-confirm-all {
+  width: 100%; margin-top: 10px; padding: 12px;
+  border: none; border-radius: 10px;
+  background: var(--celadon); color: white;
+  font-family: inherit; font-size: 13px; font-weight: 700;
+  cursor: pointer; display: none;
+}
+.btn-confirm-all.show { display: block; }
+.btn-confirm-all:disabled { opacity: 0.5; }
+
+.error-msg { display: none; background: rgba(200,85,61,0.12); border: 1px solid rgba(200,85,61,0.3); border-radius: 10px; padding: 12px 14px; font-size: 12px; color: #e8a394; margin-top: 10px; }
+.error-msg.show { display: block; }
+.success-msg { display: none; background: rgba(91,138,114,0.15); border: 1px solid rgba(91,138,114,0.3); border-radius: 10px; padding: 12px 14px; font-size: 12px; color: #a8c9b5; margin-top: 10px; }
+.success-msg.show { display: block; }
+
+/* 証券テーブル */
+.sec-table { display: none; margin-top: 14px; border-radius: 10px; overflow: hidden; border: 1px solid rgba(255,255,255,0.08); }
+.sec-table.show { display: block; }
+.sec-table table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.sec-table thead tr { background: rgba(184,146,63,0.2); }
+.sec-table th { padding: 10px 8px; text-align: right; font-weight: 600; color: var(--gold); font-size: 11px; }
+.sec-table th:first-child { text-align: left; }
+.sec-table tbody tr { border-top: 1px solid rgba(255,255,255,0.06); }
+.sec-table td { padding: 6px 8px; vertical-align: middle; }
+.sec-table td:first-child { font-size: 12px; font-weight: 500; }
+.sec-table input[type=number] {
+  width: 100%; background: rgba(247,243,234,0.1); color: var(--paper);
+  border: 1px solid rgba(255,255,255,0.1); border-radius: 6px;
+  padding: 6px 8px; font-size: 12px;
+  font-family: 'DM Mono', monospace; text-align: right; outline: none;
+}
+.sec-table input[type=number]:focus { border-color: var(--gold); }
+.sec-table .gain { font-family: 'DM Mono', monospace; text-align: right; font-size: 12px; }
+.sec-table .gain.positive { color: var(--celadon); }
+.sec-table .gain.negative { color: var(--vermillion); }
+.sec-badge { display: inline-block; font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-left: 4px; background: rgba(91,138,114,0.3); color: #a8c9b5; }
+
+.recent-list { display: flex; flex-direction: column; gap: 1px; }
+.recent-item { background: var(--paper); color: var(--ink); padding: 12px 16px; display: flex; align-items: center; gap: 12px; }
+.recent-item:first-child { border-radius: 14px 14px 0 0; }
+.recent-item:last-child { border-radius: 0 0 14px 14px; }
+.recent-item:only-child { border-radius: 14px; }
+.recent-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.recent-info { flex: 1; min-width: 0; }
+.recent-desc { font-size: 13px; font-weight: 500; }
+.recent-meta { font-size: 10px; color: var(--text-soft); margin-top: 2px; }
+.recent-amt { font-family: 'DM Mono', monospace; font-size: 13px; }
+.recent-amt.income { color: var(--celadon); }
+.recent-amt.expense { color: var(--vermillion); }
+
+.section-title {
+  font-family: 'Shippori Mincho', serif; font-size: 14px; font-weight: 700;
+  display: flex; align-items: center; gap: 8px; margin-bottom: 12px;
+}
+.section-title::before { content: ''; width: 4px; height: 14px; background: var(--gold); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="app-title"><span class="stamp">記</span>家計簿入力</div>
+  <p>Googleスプレッドシートに直接保存</p>
+</header>
+
+<div class="main">
+
+  <div class="security-note">
+    <span class="icon">🔒</span>
+    <span>データはGoogleスプレッドシートに直接保存されます。写真・CSV解析はGAS経由でGoogle Gemini AIを使用します。</span>
+  </div>
+
+  <!-- 設定カード -->
+  <div class="setup-card" id="setupCard">
+    <div class="setup-header">
+      <div class="status-dot" id="statusDot"></div>
+      <h3>スプレッドシートとの連携</h3>
+    </div>
+    <p id="setupDesc">GAS WebアプリURLを設定してください。</p>
+    <label>GAS WebアプリURL</label>
+    <input type="text" id="gasUrl" placeholder="https://script.google.com/macros/s/.../exec">
+    <button class="btn-connect" onclick="saveSettings()">保存する</button>
+    <div class="ai-setup-note">
+      📸 写真・CSV・証券スクショ解析を使うには、GASエディタで <strong>setupGeminiApiKey()</strong> を一度だけ実行してください。<br>
+      APIキーの取得：<strong>aistudio.google.com</strong>（Googleアカウントで無料）
+    </div>
+  </div>
+
+  <!-- 入力方法タブ -->
+  <div>
+    <div class="input-tabs">
+      <button class="input-tab active" data-panel="manual" onclick="switchTab(this)">✎ 手入力</button>
+      <button class="input-tab" data-panel="photo" onclick="switchTab(this)">📷 写真</button>
+      <button class="input-tab" data-panel="csv" onclick="switchTab(this)">📄 CSV</button>
+      <button class="input-tab" data-panel="securities" onclick="switchTab(this)">📈 証券</button>
+    </div>
+
+    <!-- 手入力 -->
+    <div class="input-panel active" id="panel-manual">
+      <div class="type-toggle">
+        <button class="type-btn expense active" id="typeExpenseBtn" onclick="setManualType('expense')">支出</button>
+        <button class="type-btn income" id="typeIncomeBtn" onclick="setManualType('income')">収入</button>
+      </div>
+      <div class="form-row">
+        <div class="form-field"><label>日付</label><input type="date" id="mDate"></div>
+        <div class="form-field"><label>金額</label><input type="number" id="mAmount" placeholder="0"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-field"><label>内容</label><input type="text" id="mDesc" placeholder="例：スーパー、給料など"></div>
+        <div class="form-field"><label>カテゴリ</label><select id="mCategory"></select></div>
+      </div>
+      <button class="btn-submit" id="manualSubmitBtn" onclick="addManualEntry()">スプレッドシートに追加</button>
+      <div class="success-msg" id="manualSuccess"></div>
+      <div class="error-msg" id="manualError"></div>
+    </div>
+
+    <!-- 写真 -->
+    <div class="input-panel" id="panel-photo">
+      <div class="upload-zone">
+        <input type="file" id="photoInput" accept="image/*,application/pdf">
+        <div class="icon">📷</div>
+        <h3>レシート・明細の写真</h3>
+        <p>レシート、クレカ明細、銀行アプリのスクショなど</p>
+      </div>
+      <div class="preview-row" id="photoPreview">
+        <span>📎</span><span class="name" id="photoName"></span>
+        <button onclick="clearPhoto()">✕</button>
+      </div>
+      <button class="btn-analyze" id="photoAnalyzeBtn" onclick="analyzePhoto()">🔍 読み取る（AI解析）</button>
+      <div class="loading-inline" id="photoLoading"><div class="spinner-sm"></div>GAS経由でAI解析中...</div>
+      <div class="error-msg" id="photoError"></div>
+      <div class="review-list" id="photoReview"></div>
+      <button class="btn-confirm-all" id="photoConfirmBtn" onclick="confirmReview('photo')">スプレッドシートに追加</button>
+      <div class="success-msg" id="photoSuccess"></div>
+    </div>
+
+    <!-- CSV -->
+    <div class="input-panel" id="panel-csv">
+      <select class="csv-bank" id="csvBank">
+        <option value="自動判定">金融機関：自動判定</option>
+        <option value="楽天銀行">楽天銀行</option>
+        <option value="三菱UFJ銀行">三菱UFJ銀行</option>
+        <option value="ゆうちょ銀行">ゆうちょ銀行</option>
+        <option value="三井住友銀行">三井住友銀行</option>
+        <option value="楽天カード">楽天カード</option>
+        <option value="エポスカード">エポスカード</option>
+        <option value="viewカード">viewカード</option>
+        <option value="三井住友カード">三井住友カード</option>
+      </select>
+      <div class="upload-zone">
+        <input type="file" id="csvInput" accept=".csv,.txt">
+        <div class="icon">📄</div>
+        <h3>明細CSVファイル</h3>
+        <p>銀行・カードサイトでダウンロードしたCSV</p>
+      </div>
+      <div class="preview-row" id="csvPreview">
+        <span>📄</span><span class="name" id="csvName"></span>
+        <button onclick="clearCSV()">✕</button>
+      </div>
+      <button class="btn-analyze" id="csvAnalyzeBtn" onclick="analyzeCSV()">🔍 読み取る（AI解析）</button>
+      <div class="loading-inline" id="csvLoading"><div class="spinner-sm"></div>GAS経由でAI解析中...</div>
+      <div class="error-msg" id="csvError"></div>
+      <div class="review-list" id="csvReview"></div>
+      <button class="btn-confirm-all" id="csvConfirmBtn" onclick="confirmReview('csv')">スプレッドシートに追加</button>
+      <div class="success-msg" id="csvSuccess"></div>
+    </div>
+
+    <!-- 証券 -->
+    <div class="input-panel" id="panel-securities">
+      <div class="form-field" style="margin-bottom:14px">
+        <label>対象月（どの月のシートに保存するか）</label>
+        <select class="sec-month-sel" id="secMonth"></select>
+      </div>
+
+      <div class="upload-zone">
+        <input type="file" id="secInput" accept="image/*" multiple>
+        <div class="icon">📱</div>
+        <h3>証券アプリのスクリーンショット</h3>
+        <p>複数のスクショを一度に選択できます（楽天・SBI・確定拠出年金など）</p>
+      </div>
+
+      <div id="secFileList" style="margin-top:10px;display:flex;flex-direction:column;gap:6px;"></div>
+
+      <button class="btn-analyze" id="secAnalyzeBtn" onclick="analyzeSecuritiesPhotos()">🔍 一括AI解析</button>
+      <div class="loading-inline" id="secLoading">
+        <div class="spinner-sm"></div>
+        <span id="secLoadingText">AI解析中...</span>
+      </div>
+      <div class="error-msg" id="secError"></div>
+
+      <!-- 銘柄一覧 -->
+      <div id="secHoldingsSection" style="display:none;margin-top:14px;">
+        <div class="section-title" style="font-size:13px">保有銘柄一覧</div>
+        <div style="overflow-x:auto;border-radius:10px;border:1px solid rgba(255,255,255,0.08);">
+          <table id="secHoldingsTable" style="width:100%;border-collapse:collapse;font-size:11px;min-width:720px;">
+            <thead>
+              <tr style="background:rgba(184,146,63,0.2);">
+                <th style="padding:8px 5px;text-align:left;color:var(--gold);font-size:10px;white-space:nowrap">証券会社</th>
+                <th style="padding:8px 5px;text-align:left;color:var(--gold);font-size:10px;white-space:nowrap">銘柄名</th>
+                <th style="padding:8px 5px;text-align:right;color:var(--gold);font-size:10px;white-space:nowrap">数量</th>
+                <th style="padding:8px 5px;text-align:right;color:var(--gold);font-size:10px;white-space:nowrap">単価</th>
+                <th style="padding:8px 5px;text-align:right;color:var(--gold);font-size:10px;white-space:nowrap">受渡金額</th>
+                <th style="padding:8px 5px;text-align:right;color:var(--gold);font-size:10px;white-space:nowrap">現在単価</th>
+                <th style="padding:8px 5px;text-align:right;color:var(--gold);font-size:10px;white-space:nowrap">現在価値</th>
+                <th style="padding:8px 5px;text-align:right;color:var(--gold);font-size:10px;white-space:nowrap">評価損益</th>
+                <th style="padding:8px 5px;text-align:right;color:var(--gold);font-size:10px;white-space:nowrap">騰落率%</th>
+                <th style="padding:8px 4px;color:var(--gold);font-size:10px;"></th>
+              </tr>
+            </thead>
+            <tbody id="secHoldingsTbody"></tbody>
+          </table>
+        </div>
+        <button onclick="addHoldingRow()" style="margin-top:8px;width:100%;padding:8px;border:1px dashed rgba(255,255,255,0.2);border-radius:8px;background:none;color:var(--text-soft);font-family:inherit;font-size:12px;cursor:pointer;">＋ 手動追加</button>
+      </div>
+
+      <button class="btn-confirm-all" id="secConfirmBtn" onclick="confirmSecurities()" style="background:var(--celadon);margin-top:14px;">スプレッドシートに保存</button>
+      <div class="success-msg" id="secSuccess"></div>
+    </div>
+  </div>
+
+  <!-- 直近の履歴 -->
+  <div id="recentSection" style="display:none">
+    <div class="section-title">今回のセッションで追加した明細</div>
+    <div class="recent-list" id="recentList"></div>
+  </div>
+
+</div>
+
+<script>
+const CATEGORIES = {
+  expense: ['食費','日用品','交通費','光熱費','通信費','医療費','住居費','保険','娯楽','教育','その他'],
+  income: ['給与','ボーナス','副業','その他収入']
+};
+const CATEGORY_COLORS = {
+  '食費':'#c8553d','日用品':'#b8923f','交通費':'#5b8a72','光熱費':'#8a6fb0',
+  '通信費':'#4a8fb5','医療費':'#d4756b','住居費':'#7a6a52','保険':'#5f7a8a',
+  '娯楽':'#c98a3f','教育':'#5f8a6a','その他':'#8a8478',
+  '給与':'#5b8a72','ボーナス':'#4a8fb5','副業':'#b8923f','その他収入':'#8a8478'
+};
+
+let manualType = 'expense';
+let photoFile = null, csvFile = null;
+let secFiles = [], secHoldings = [];
+let reviewData = { photo: [], csv: [] };
+let recentEntries = [];
+let gasUrl = '';
+
+function init() {
+  document.getElementById('mDate').value = new Date().toISOString().slice(0,10);
+  updateCategoryOptions();
+  gasUrl = localStorage.getItem('gasUrl') || '';
+  if (gasUrl) document.getElementById('gasUrl').value = gasUrl;
+  updateConnectionStatus();
+  initSecMonth();
+}
+
+function updateCategoryOptions() {
+  const sel = document.getElementById('mCategory');
+  sel.innerHTML = CATEGORIES[manualType].map(c => `<option>${c}</option>`).join('');
+}
+function setManualType(type) {
+  manualType = type;
+  document.getElementById('typeExpenseBtn').classList.toggle('active', type==='expense');
+  document.getElementById('typeIncomeBtn').classList.toggle('active', type==='income');
+  updateCategoryOptions();
+}
+function switchTab(btn) {
+  document.querySelectorAll('.input-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.input-panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('panel-' + btn.dataset.panel).classList.add('active');
+}
+
+function saveSettings() {
+  const url = document.getElementById('gasUrl').value.trim();
+  if (url && !url.startsWith('https://script.google.com/')) {
+    alert('正しいGAS WebアプリURLを入力してください');
+    return;
+  }
+  gasUrl = url;
+  if (url) localStorage.setItem('gasUrl', url);
+  updateConnectionStatus();
+}
+
+function updateConnectionStatus() {
+  const dot = document.getElementById('statusDot');
+  const desc = document.getElementById('setupDesc');
+  const card = document.getElementById('setupCard');
+  dot.classList.toggle('ok', !!gasUrl);
+  card.classList.toggle('connected', !!gasUrl);
+  desc.textContent = gasUrl
+    ? '✅ 接続済みです。写真・CSV・証券解析を使うには GAS で setupGeminiApiKey() を実行してください。'
+    : 'GAS WebアプリURLを設定してください。';
+  document.getElementById('manualSubmitBtn').disabled = !gasUrl;
+  document.getElementById('secConfirmBtn').disabled = !gasUrl;
+}
+
+// ============================================================
+// 画像圧縮（canvas）
+// ============================================================
+function compressImage(file, maxWidth) {
+  maxWidth = maxWidth || 480;
+  return new Promise(function(resolve, reject) {
+    var img = new Image();
+    var objectUrl = URL.createObjectURL(file);
+    img.onload = function() {
+      URL.revokeObjectURL(objectUrl);
+      var scale = Math.min(1, maxWidth / img.width);
+      var w = Math.round(img.width * scale);
+      var h = Math.round(img.height * scale);
+      var canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      var base64 = canvas.toDataURL('image/jpeg', 0.40).split(',')[1];
+      // サイズが大きすぎる場合、さらに圧縮
+      if (base64.length > 35000) {
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        base64 = canvas.toDataURL('image/jpeg', 0.25).split(',')[1];
+      }
+      resolve(base64);
+    };
+    img.onerror = function() { URL.revokeObjectURL(objectUrl); reject(new Error('画像の読み込みに失敗しました')); };
+    img.src = objectUrl;
+  });
+}
+
+// ============================================================
+// GASリクエスト（fetch方式）
+// ============================================================
+async function gasRequest(params, timeoutMs) {
+  timeoutMs = timeoutMs || 20000;
+  if (!gasUrl) throw new Error('GAS URLが未設定です');
+  const qs = Object.keys(params).map(k =>
+    encodeURIComponent(k) + '=' + encodeURIComponent(params[k])
+  ).join('&');
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(gasUrl + '?' + qs, {
+      signal: controller.signal,
+      redirect: 'follow'
+    });
+    clearTimeout(timer);
+    const text = await response.text();
+    // JSONP形式（callback(...)）の場合は中身を取り出す
+    const match = text.match(/^[^(]+\(([\s\S]*)\)$/);
+    const data = JSON.parse(match ? match[1] : text);
+    if (data && data.success) return data;
+    throw new Error((data && data.message) || '失敗しました');
+  } catch(err) {
+    clearTimeout(timer);
+    if (err.name === 'AbortError') throw new Error('タイムアウト（' + (timeoutMs/1000) + '秒）');
+    throw err;
+  }
+}
+// 後方互換のためのエイリアス
+function jsonpRequest(params, timeoutMs) { return gasRequest(params, timeoutMs); }
+
+// ============================================================
+// POST送信（画像など大きなデータ用）
+// ============================================================
+async function postRequest(params, timeoutMs) {
+  timeoutMs = timeoutMs || 50000;
+  if (!gasUrl) throw new Error('GAS URLが未設定です');
+  const body = Object.keys(params).map(k =>
+    encodeURIComponent(k) + '=' + encodeURIComponent(params[k])
+  ).join('&');
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(gasUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body,
+      signal: controller.signal,
+      redirect: 'follow'
+    });
+    clearTimeout(timer);
+    const text = await response.text();
+    const data = JSON.parse(text);
+    if (data && data.success) return data;
+    throw new Error((data && data.message) || '失敗しました');
+  } catch(err) {
+    clearTimeout(timer);
+    if (err.name === 'AbortError') throw new Error('タイムアウト（' + (timeoutMs/1000) + '秒）');
+    throw err;
+  }
+}
+
+// ============================================================
+// AI解析（GAS経由でGemini）
+// ============================================================
+async function callImageAI(base64, prompt) {
+  const data = await postRequest({
+    action: 'analyzeImage',
+    imageData: base64,
+    mediaType: 'image/jpeg',
+    prompt: prompt
+  }, 50000);
+  return data.text;
+}
+
+async function callTextAI(text, prompt) {
+  const data = await jsonpRequest({
+    action: 'analyzeText',
+    textData: text.slice(0, 8000),
+    prompt: prompt
+  }, 30000);
+  return data.text;
+}
+
+// ============================================================
+// 写真
+// ============================================================
+document.getElementById('photoInput').addEventListener('change', function(e) {
+  if (e.target.files[0]) {
+    photoFile = e.target.files[0];
+    document.getElementById('photoName').textContent = photoFile.name;
+    document.getElementById('photoPreview').classList.add('show');
+    document.getElementById('photoAnalyzeBtn').classList.add('show');
+  }
+});
+function clearPhoto() {
+  photoFile = null;
+  document.getElementById('photoInput').value = '';
+  document.getElementById('photoPreview').classList.remove('show');
+  document.getElementById('photoAnalyzeBtn').classList.remove('show');
+  document.getElementById('photoReview').classList.remove('show');
+  document.getElementById('photoConfirmBtn').classList.remove('show');
+}
+async function analyzePhoto() {
+  if (!photoFile) return;
+  document.getElementById('photoAnalyzeBtn').disabled = true;
+  document.getElementById('photoLoading').classList.add('show');
+  document.getElementById('photoError').classList.remove('show');
+  try {
+    const base64 = await compressImage(photoFile, 480);
+    const prompt = `この画像はレシート・クレジットカード明細・銀行アプリのスクリーンショットです。
+全ての取引明細を読み取り、次のJSON形式のみで返してください（説明文不要）：
+{"entries":[{"date":"2026-06-15","description":"店名・内容","category":"食費/日用品/交通費/光熱費/通信費/医療費/住居費/保険/娯楽/教育/給与/ボーナス/副業/その他収入/その他のいずれか","type":"expense または income","amount":1500}]}
+日付が不明な場合は今日の日付(${new Date().toISOString().slice(0,10)})を使用。金額は数値のみ。`;
+    const text = await callImageAI(base64, prompt);
+    const parsed = JSON.parse(text.replace(/```json|```/g,'').trim());
+    reviewData.photo = parsed.entries || [];
+    if (!reviewData.photo.length) {
+      showError('photoError', '明細を検出できませんでした。');
+    } else {
+      renderReview('photo');
+    }
+  } catch(err) {
+    showError('photoError', 'エラー: ' + err.message);
+  }
+  document.getElementById('photoLoading').classList.remove('show');
+  document.getElementById('photoAnalyzeBtn').disabled = false;
+}
+
+// ============================================================
+// CSV
+// ============================================================
+document.getElementById('csvInput').addEventListener('change', function(e) {
+  if (e.target.files[0]) {
+    csvFile = e.target.files[0];
+    document.getElementById('csvName').textContent = csvFile.name;
+    document.getElementById('csvPreview').classList.add('show');
+    document.getElementById('csvAnalyzeBtn').classList.add('show');
+  }
+});
+function clearCSV() {
+  csvFile = null;
+  document.getElementById('csvInput').value = '';
+  document.getElementById('csvPreview').classList.remove('show');
+  document.getElementById('csvAnalyzeBtn').classList.remove('show');
+  document.getElementById('csvReview').classList.remove('show');
+  document.getElementById('csvConfirmBtn').classList.remove('show');
+}
+async function analyzeCSV() {
+  if (!csvFile) return;
+  document.getElementById('csvAnalyzeBtn').disabled = true;
+  document.getElementById('csvLoading').classList.add('show');
+  document.getElementById('csvError').classList.remove('show');
+  try {
+    const text = await readCSVText(csvFile);
+    const bankName = document.getElementById('csvBank').value;
+    const prompt = `以下は${bankName}の取引明細CSVです。全取引を読み取り、次のJSON形式のみで返してください：
+{"entries":[{"date":"2026-06-15","description":"内容","category":"食費/日用品/交通費/光熱費/通信費/医療費/住居費/保険/娯楽/教育/給与/ボーナス/副業/その他収入/その他のいずれか","type":"expense または income","amount":1500}]}
+金額は正の数値のみ。CSV:`;
+    const rawText = await callTextAI(text, prompt);
+    const parsed = JSON.parse(rawText.replace(/```json|```/g,'').trim());
+    reviewData.csv = parsed.entries || [];
+    if (!reviewData.csv.length) {
+      showError('csvError', '取引データが見つかりませんでした。');
+    } else {
+      renderReview('csv');
+    }
+  } catch(err) {
+    showError('csvError', 'エラー: ' + err.message);
+  }
+  document.getElementById('csvLoading').classList.remove('show');
+  document.getElementById('csvAnalyzeBtn').disabled = false;
+}
+
+// ============================================================
+// レビュー
+// ============================================================
+function renderReview(kind) {
+  const list = document.getElementById(kind + 'Review');
+  const allCats = [...CATEGORIES.expense, ...CATEGORIES.income];
+  list.innerHTML = reviewData[kind].map((e, i) => `
+    <div class="review-item">
+      <input type="date" value="${e.date}" onchange="reviewData['${kind}'][${i}].date=this.value" style="width:110px">
+      <input type="text" class="desc-input" value="${escapeAttr(e.description)}" onchange="reviewData['${kind}'][${i}].description=this.value">
+      <select onchange="reviewData['${kind}'][${i}].category=this.value">
+        ${allCats.map(c=>`<option ${e.category===c?'selected':''}>${c}</option>`).join('')}
+      </select>
+      <input type="number" class="amt-input" value="${e.amount}" onchange="reviewData['${kind}'][${i}].amount=Number(this.value)">
+      <button class="remove-btn" onclick="removeReviewItem('${kind}', ${i})">✕</button>
+    </div>
+  `).join('');
+  list.classList.add('show');
+  document.getElementById(kind + 'ConfirmBtn').classList.add('show');
+}
+function removeReviewItem(kind, idx) {
+  reviewData[kind].splice(idx, 1);
+  renderReview(kind);
+}
+async function confirmReview(kind) {
+  const btn = document.getElementById(kind + 'ConfirmBtn');
+  const successEl = document.getElementById(kind + 'Success');
+  btn.disabled = true;
+  try {
+    await jsonpRequest({ entries: JSON.stringify(reviewData[kind]) });
+    successEl.textContent = `✅ ${reviewData[kind].length}件を送信しました。`;
+    successEl.classList.add('show');
+    addToRecent(reviewData[kind]);
+    reviewData[kind] = [];
+    document.getElementById(kind+'Review').classList.remove('show');
+    btn.classList.remove('show');
+    if (kind === 'photo') clearPhoto();
+    if (kind === 'csv') clearCSV();
+  } catch (err) {
+    showError(kind + 'Error', 'エラー: ' + err.message);
+  }
+  btn.disabled = !gasUrl;
+}
+
+// ============================================================
+// 手入力
+// ============================================================
+async function addManualEntry() {
+  const amount = Number(document.getElementById('mAmount').value);
+  const desc = document.getElementById('mDesc').value.trim();
+  if (!amount || !desc) { alert('内容と金額を入力してください'); return; }
+  const entry = {
+    date: document.getElementById('mDate').value,
+    description: desc,
+    category: document.getElementById('mCategory').value,
+    type: manualType,
+    amount
+  };
+  const btn = document.getElementById('manualSubmitBtn');
+  document.getElementById('manualSuccess').classList.remove('show');
+  document.getElementById('manualError').classList.remove('show');
+  btn.disabled = true;
+  try {
+    await jsonpRequest({ entries: JSON.stringify([entry]) });
+    document.getElementById('manualSuccess').textContent = '✅ 送信しました。';
+    document.getElementById('manualSuccess').classList.add('show');
+    addToRecent([entry]);
+    document.getElementById('mAmount').value = '';
+    document.getElementById('mDesc').value = '';
+  } catch (err) {
+    showError('manualError', 'エラー: ' + err.message);
+  }
+  btn.disabled = !gasUrl;
+}
+
+// ============================================================
+// 証券スクリーンショット（複数ファイル対応）
+// ============================================================
+function initSecMonth() {
+  const sel = document.getElementById('secMonth');
+  const now = new Date();
+  for (let i = 0; i < 6; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const yy = String(d.getFullYear()).slice(2);
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const sheetName = yy + mm;
+    const opt = document.createElement('option');
+    opt.value = sheetName;
+    opt.textContent = `${d.getFullYear()}年${d.getMonth() + 1}月（シート: ${sheetName}）`;
+    sel.appendChild(opt);
+  }
+}
+
+document.getElementById('secInput').addEventListener('change', function(e) {
+  Array.from(e.target.files).forEach(f => {
+    if (!secFiles.find(sf => sf.name === f.name && sf.size === f.size)) {
+      secFiles.push(f);
+    }
+  });
+  renderSecFileList();
+  if (secFiles.length > 0) document.getElementById('secAnalyzeBtn').classList.add('show');
+});
+
+function renderSecFileList() {
+  const container = document.getElementById('secFileList');
+  if (!secFiles.length) { container.innerHTML = ''; return; }
+  container.innerHTML = secFiles.map((f, i) => `
+    <div class="preview-row show" style="margin-top:0">
+      <span>📎</span>
+      <span class="name">${escapeHtml(f.name)}</span>
+      <button onclick="removeSecFile(${i})">✕</button>
+    </div>
+  `).join('');
+}
+
+function removeSecFile(idx) {
+  secFiles.splice(idx, 1);
+  renderSecFileList();
+  if (!secFiles.length) {
+    document.getElementById('secAnalyzeBtn').classList.remove('show');
+    document.getElementById('secInput').value = '';
+  }
+}
+
+async function analyzeSecuritiesPhotos() {
+  if (!secFiles.length) return;
+  document.getElementById('secAnalyzeBtn').disabled = true;
+  document.getElementById('secLoading').classList.add('show');
+  document.getElementById('secError').classList.remove('show');
+
+  secHoldings = [];
+  const errors = [];
+
+  for (let i = 0; i < secFiles.length; i++) {
+    document.getElementById('secLoadingText').textContent =
+      `AI解析中... (${i + 1}/${secFiles.length}: ${secFiles[i].name})`;
+    try {
+      const base64 = await compressImage(secFiles[i], 640);
+      const prompt = `このスクリーンショットは証券口座・銀行の保有状況です。
+以下のJSONのみで返してください（説明文不要）：
+{"company":"証券会社名","holdings":[{"name":"銘柄名","quantity":数値,"unit_price":数値またはnull,"investment":数値またはnull,"current_unit_price":数値またはnull,"current_value":数値,"unrealized_gain":数値またはnull,"return_rate":数値またはnull}]}
+
+ルール：
+- company: 画面から判断できる証券会社・銀行名（例:"楽天証券","SBI証券","確定拠出年金"）
+- 全ての保有銘柄をholdingsに含める
+- quantity: 株数・口数（数値のみ）
+- unit_price: 取得単価、investment: 受渡金額・取得金額
+- current_unit_price: 現在単価、current_value: 現在価値・評価額
+- unrealized_gain: 評価損益（マイナスは負の値）
+- return_rate: 騰落率（数値のみ、%・±記号不要）
+- 不明な値はnull、金額にカンマ・¥・円不要`;
+
+      const text = await callImageAI(base64, prompt);
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) { errors.push(`${secFiles[i].name}: JSONを抽出できませんでした`); continue; }
+      const parsed = JSON.parse(jsonMatch[0]);
+      const company = parsed.company || '不明';
+      (parsed.holdings || []).forEach(h => secHoldings.push({ ...h, company }));
+    } catch (err) {
+      errors.push(`${secFiles[i].name}: ${err.message}`);
+    }
+  }
+
+  document.getElementById('secLoading').classList.remove('show');
+  document.getElementById('secAnalyzeBtn').disabled = false;
+
+  if (errors.length) showError('secError', errors.join('\n'));
+
+  if (secHoldings.length > 0) {
+    renderHoldingsTable();
+    document.getElementById('secHoldingsSection').style.display = 'block';
+    document.getElementById('secConfirmBtn').classList.add('show');
+  } else if (!errors.length) {
+    showError('secError', '銘柄データを抽出できませんでした。');
+  }
+}
+
+function renderHoldingsTable() {
+  const inp = (val, idx, field, w) =>
+    `<input type="${typeof val === 'number' || val === null ? 'number' : 'text'}" value="${val !== null && val !== undefined ? escapeAttr(String(val)) : ''}"
+      onchange="secHoldings[${idx}]['${field}']=this.type==='number'?(Number(this.value)||null):this.value"
+      style="width:${w}px;background:rgba(255,255,255,0.08);color:var(--paper);border:1px solid rgba(255,255,255,0.1);border-radius:4px;padding:3px 5px;font-size:11px;font-family:inherit${typeof val === 'number' || val === null ? ";text-align:right;font-family:'DM Mono',monospace" : ''}">`;
+
+  document.getElementById('secHoldingsTbody').innerHTML = secHoldings.map((h, i) => {
+    const gain = h.unrealized_gain;
+    const gainStyle = gain === null || gain === undefined ? '' : (gain >= 0 ? 'color:var(--celadon)' : 'color:var(--vermillion)');
+    const gainText = gain !== null && gain !== undefined
+      ? (gain >= 0 ? '+' : '') + Number(gain).toLocaleString()
+      : '－';
+    const rateText = h.return_rate !== null && h.return_rate !== undefined
+      ? (h.return_rate >= 0 ? '+' : '') + h.return_rate + '%'
+      : '－';
+    return `<tr style="border-top:1px solid rgba(255,255,255,0.06)">
+      <td style="padding:4px">${inp(h.company||'', i, 'company', 76)}</td>
+      <td style="padding:4px">${inp(h.name||'', i, 'name', 96)}</td>
+      <td style="padding:4px">${inp(h.quantity, i, 'quantity', 56)}</td>
+      <td style="padding:4px">${inp(h.unit_price, i, 'unit_price', 66)}</td>
+      <td style="padding:4px">${inp(h.investment, i, 'investment', 76)}</td>
+      <td style="padding:4px">${inp(h.current_unit_price, i, 'current_unit_price', 66)}</td>
+      <td style="padding:4px">${inp(h.current_value, i, 'current_value', 76)}</td>
+      <td style="padding:4px;text-align:right;${gainStyle};font-family:'DM Mono',monospace;white-space:nowrap;font-size:11px">${gainText}</td>
+      <td style="padding:4px;text-align:right;${gainStyle};font-family:'DM Mono',monospace;white-space:nowrap;font-size:11px">${rateText}</td>
+      <td style="padding:4px"><button onclick="removeHoldingRow(${i})" style="background:none;border:none;color:var(--vermillion);cursor:pointer;font-size:14px;padding:2px">✕</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function removeHoldingRow(idx) {
+  secHoldings.splice(idx, 1);
+  if (!secHoldings.length) {
+    document.getElementById('secHoldingsSection').style.display = 'none';
+    document.getElementById('secConfirmBtn').classList.remove('show');
+  } else {
+    renderHoldingsTable();
+  }
+}
+
+function addHoldingRow() {
+  secHoldings.push({ company: '', name: '', quantity: null, unit_price: null, investment: null,
+    current_unit_price: null, current_value: null, unrealized_gain: null, return_rate: null });
+  renderHoldingsTable();
+}
+
+async function confirmSecurities() {
+  if (!secHoldings.length) { alert('銘柄データがありません'); return; }
+  const sheetName = document.getElementById('secMonth').value;
+  const btn = document.getElementById('secConfirmBtn');
+  document.getElementById('secSuccess').classList.remove('show');
+  document.getElementById('secError').classList.remove('show');
+  btn.disabled = true;
+  try {
+    await postRequest({
+      action: 'setHoldings',
+      sheetName: sheetName,
+      holdings: JSON.stringify(secHoldings)
+    }, 30000);
+    document.getElementById('secSuccess').textContent =
+      `✅ ${sheetName}シートに${secHoldings.length}件の銘柄データを保存しました。`;
+    document.getElementById('secSuccess').classList.add('show');
+  } catch (err) {
+    showError('secError', 'エラー: ' + err.message);
+  }
+  btn.disabled = !gasUrl;
+}
+
+// ============================================================
+// ユーティリティ
+// ============================================================
+function showError(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.classList.add('show');
+}
+function escapeAttr(str) { return String(str).replace(/"/g, '&quot;'); }
+function addToRecent(entries) {
+  entries.forEach(e => recentEntries.unshift(e));
+  recentEntries = recentEntries.slice(0, 10);
+  renderRecent();
+}
+function renderRecent() {
+  if (!recentEntries.length) return;
+  document.getElementById('recentSection').style.display = 'block';
+  document.getElementById('recentList').innerHTML = recentEntries.map(e => `
+    <div class="recent-item">
+      <div class="recent-dot" style="background:${CATEGORY_COLORS[e.category]||'#999'}"></div>
+      <div class="recent-info">
+        <div class="recent-desc">${escapeHtml(e.description)}</div>
+        <div class="recent-meta">${e.date} ・ ${e.category}</div>
+      </div>
+      <div class="recent-amt ${e.type}">${e.type==='income'?'+':'-'}¥${Number(e.amount).toLocaleString()}</div>
+    </div>
+  `).join('');
+}
+function escapeHtml(str) { const div = document.createElement('div'); div.textContent = str; return div.innerHTML; }
+function readCSVText(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => resolve(e.target.result);
+    reader.onerror = reject;
+    reader.readAsText(file, 'Shift_JIS');
+  });
+}
+
+init();
+</script>
+</body>
+</html>
