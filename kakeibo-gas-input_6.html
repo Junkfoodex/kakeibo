@@ -270,7 +270,6 @@ select.csv-bank, select.sec-month-sel {
 }
 .section-title::before { content: ''; width: 4px; height: 14px; background: var(--gold); border-radius: 2px; }
 </style>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 </head>
 <body>
 
@@ -445,30 +444,22 @@ select.csv-bank, select.sec-month-sel {
         <div id="rebalanceResult" style="margin-top:10px;font-size:12px;display:none;"></div>
       </div>
 
-      <!-- ポートフォリオ比較チャート -->
-      <div id="portfolioCompareSection" style="margin-top:16px;display:none;padding:14px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:12px;">
-        <div style="font-size:13px;font-weight:600;color:var(--paper);margin-bottom:12px;">📊 ポートフォリオ比較</div>
-        <div style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center;">
-          <div style="flex:1;min-width:140px;text-align:center;">
-            <div style="font-size:11px;color:var(--text-soft);margin-bottom:6px;">現在</div>
-            <canvas id="currentPieChart" style="max-width:180px;max-height:180px;"></canvas>
-          </div>
-          <div style="flex:1;min-width:140px;text-align:center;">
-            <div style="font-size:11px;color:var(--gold);margin-bottom:6px;">目標</div>
-            <canvas id="targetPieChart" style="max-width:180px;max-height:180px;"></canvas>
-          </div>
-        </div>
-        <!-- 凡例：現在% → 目標% -->
-        <div id="pieChartLegend" style="margin-top:12px;padding:6px 0;"></div>
-        <div style="font-size:10px;color:var(--text-soft);margin-top:4px;">白=現在% ／ <span style="color:var(--gold)">金=目標%</span></div>
-      </div>
-
       <!-- 目標ポートフォリオ保存 -->
       <div id="targetSaveSection" style="margin-top:14px;display:none;padding:12px;background:rgba(184,146,63,0.08);border:1px solid rgba(184,146,63,0.25);border-radius:12px;">
-        <div style="font-size:13px;font-weight:600;color:var(--gold);margin-bottom:8px;">💾 目標配分を保存（履歴に残す）</div>
+        <div style="font-size:13px;font-weight:600;color:var(--gold);margin-bottom:10px;">💾 目標配分を保存（統合分析・履歴に反映）</div>
+        <div style="font-size:11px;color:var(--text-soft);margin-bottom:6px;">全体アロケーション目標（合計100%）</div>
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px;flex-wrap:wrap;">
+          <span style="font-size:12px;color:var(--paper);">現金</span>
+          <input type="number" id="cashTargetPct" min="0" max="100" value="0" placeholder="0"
+            style="width:60px;background:rgba(255,255,255,0.08);color:var(--paper);border:1px solid rgba(184,146,63,0.3);border-radius:6px;padding:5px 7px;font-size:13px;font-family:'DM Mono',monospace;text-align:right;">%
+          <span style="font-size:12px;color:var(--paper);">証券</span>
+          <input type="number" id="secAllTargetPct" min="0" max="100" value="100" placeholder="100"
+            style="width:60px;background:rgba(255,255,255,0.08);color:var(--paper);border:1px solid rgba(184,146,63,0.3);border-radius:6px;padding:5px 7px;font-size:13px;font-family:'DM Mono',monospace;text-align:right;">%
+          <span id="allocSum" style="font-size:11px;color:var(--celadon);margin-left:4px;">合計: 100%</span>
+        </div>
         <input type="text" id="targetMemo" placeholder="変更理由・メモ（例：米国比率を下げてバランス型に変更）"
           style="width:100%;padding:8px;background:rgba(255,255,255,0.08);color:var(--paper);border:1px solid rgba(184,146,63,0.3);border-radius:6px;font-size:12px;font-family:inherit;box-sizing:border-box;margin-bottom:8px;">
-        <button class="btn-confirm-all" id="saveTargetBtn" onclick="saveTargetPortfolio()" style="background:var(--gold);color:#1a1a2e;width:100%;font-size:13px;">💾 この目標配分を保存</button>
+        <button class="btn-confirm-all" id="saveTargetBtn" onclick="saveTargetPortfolio()" style="background:var(--gold);color:#1a1a2e;width:100%;font-size:13px;">💾 保存（統合分析シートに反映）</button>
       </div>
 
       <!-- 変更履歴 -->
@@ -989,8 +980,7 @@ JSONのみ返答（説明不要）：
       document.getElementById('secSuccess').textContent = `✅ ${secHoldings.length}件を抽出${dupMsg}`;
       document.getElementById('secSuccess').classList.add('show');
     }
-    // 解析直後に現在ポートフォリオの円グラフを表示
-    setTimeout(drawPieCharts, 100);
+    document.getElementById('historyWrapper').style.display = 'block';
   } else if (!errors.length) {
     showError('secError', '銘柄データを抽出できませんでした。');
   }
@@ -1045,7 +1035,10 @@ function updateTargetSum() {
     el.textContent = `目標合計: ${sum.toFixed(1)}%`;
     el.style.color = Math.abs(sum - 100) < 0.1 ? 'var(--celadon)' : (sum > 100 ? 'var(--vermillion)' : 'var(--text-soft)');
   }
-  drawPieCharts();
+  // 目標%が入力されたら保存セクションを表示
+  const hasTarget = secHoldings.some(h => Number(h.target_pct) > 0);
+  document.getElementById('targetSaveSection').style.display = hasTarget ? 'block' : 'none';
+  document.getElementById('historyWrapper').style.display = 'block';
 }
 
 async function calcRebalance() {
@@ -1138,81 +1131,45 @@ async function confirmSecurities() {
   btn.disabled = !gasUrl;
 }
 
-// ---- ポートフォリオ比較チャート ----
-let currentChartInst = null, targetChartInst = null;
-const PIE_COLORS = ['#4e91d6','#e8a838','#6bc48a','#e05d5d','#9b7de8','#5bb8c4','#d97b2e','#a8c84e','#c46b9b','#7bb3f0','#f0c45a','#60d0a0'];
-
-function drawPieCharts() {
-  const totalVal = secHoldings.reduce((s, h) => s + (Number(h.current_value) || 0), 0);
-  const hasTarget = secHoldings.some(h => Number(h.target_pct) > 0);
-  if (totalVal === 0) return;
-
-  document.getElementById('portfolioCompareSection').style.display = 'block';
-  document.getElementById('targetSaveSection').style.display = hasTarget ? 'block' : 'none';
-  document.getElementById('historyWrapper').style.display = 'block';
-  // 目標グラフは目標%未入力時は非表示
-  document.getElementById('targetPieChart').closest('div').style.display = hasTarget ? '' : 'none';
-
-  const labels = secHoldings.map(h => h.name);
-  const currentData = secHoldings.map(h => Number(h.current_value) || 0);
-  const targetData = secHoldings.map(h => Number(h.target_pct) || 0);
-
-  const makeChart = (id, data, inst) => {
-    if (inst) inst.destroy();
-    const ctx = document.getElementById(id).getContext('2d');
-    return new Chart(ctx, {
-      type: 'pie',
-      data: {
-        labels,
-        datasets: [{ data, backgroundColor: PIE_COLORS, borderWidth: 1, borderColor: 'rgba(0,0,0,0.3)' }]
-      },
-      options: {
-        plugins: {
-          legend: { display: false },
-          tooltip: { callbacks: { label: c => `${c.label}: ${c.parsed.toLocaleString()}${id === 'targetPieChart' ? '%' : '円'}` } }
-        },
-        animation: { duration: 600 }
-      }
-    });
-  };
-  currentChartInst = makeChart('currentPieChart', currentData, currentChartInst);
-  if (hasTarget) targetChartInst = makeChart('targetPieChart', targetData, targetChartInst);
-
-  // 凡例（両チャート共通・現在価値ベース）
-  const legendEl = document.getElementById('pieChartLegend');
-  if (legendEl) {
-    const totalV = currentData.reduce((s, v) => s + v, 0);
-    legendEl.innerHTML = labels.map((name, i) => {
-      const curPct = totalV > 0 ? (currentData[i] / totalV * 100).toFixed(1) : '0.0';
-      const tgtPct = targetData[i] || 0;
-      return `<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.05)">
-        <span style="width:10px;height:10px;border-radius:50%;background:${PIE_COLORS[i % PIE_COLORS.length]};flex-shrink:0;"></span>
-        <span style="flex:1;font-size:11px;color:var(--paper);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${name}</span>
-        <span style="font-size:11px;color:var(--text-soft);font-family:'DM Mono',monospace;white-space:nowrap">${curPct}%</span>
-        ${hasTarget ? `<span style="font-size:11px;color:var(--gold);font-family:'DM Mono',monospace;white-space:nowrap">→${tgtPct}%</span>` : ''}
-      </div>`;
-    }).join('');
+// ---- 目標ポートフォリオ管理 ----
+document.addEventListener('change', e => {
+  if (e.target.id === 'cashTargetPct' || e.target.id === 'secAllTargetPct') {
+    const c = Number(document.getElementById('cashTargetPct').value) || 0;
+    const s = Number(document.getElementById('secAllTargetPct').value) || 0;
+    const el = document.getElementById('allocSum');
+    if (el) {
+      el.textContent = `合計: ${c + s}%`;
+      el.style.color = c + s === 100 ? 'var(--celadon)' : 'var(--vermillion)';
+    }
   }
-}
+});
 
 async function saveTargetPortfolio() {
   const targets = secHoldings.filter(h => Number(h.target_pct) > 0).map(h => ({ name: h.name, pct: Number(h.target_pct) }));
   if (!targets.length) { alert('目標%が入力されていません'); return; }
   const memo = document.getElementById('targetMemo').value;
+  const cashPct = Number(document.getElementById('cashTargetPct').value) || 0;
+  const secAllPct = Number(document.getElementById('secAllTargetPct').value) || 0;
   const btn = document.getElementById('saveTargetBtn');
   btn.disabled = true;
   btn.textContent = '⏳ 保存中...';
   try {
-    const data = await postRequest({ action: 'saveTarget', targets: JSON.stringify(targets), memo }, 20000);
+    const data = await postRequest({
+      action: 'saveTarget',
+      targets: JSON.stringify(targets),
+      memo,
+      cashPct: String(cashPct),
+      secPct: String(secAllPct)
+    }, 25000);
     document.getElementById('secSuccess').textContent = `✅ ${data.message}`;
     document.getElementById('secSuccess').classList.add('show');
     document.getElementById('targetMemo').value = '';
-    loadHistory();
+    if (document.getElementById('historySection').style.display !== 'none') loadHistory();
   } catch (err) {
     showError('secError', '目標保存エラー: ' + err.message);
   }
   btn.disabled = false;
-  btn.textContent = '💾 この目標配分を保存';
+  btn.textContent = '💾 保存（統合分析シートに反映）';
 }
 
 async function loadHistory() {
@@ -1230,6 +1187,7 @@ async function loadHistory() {
           <span style="font-size:12px;color:var(--gold);font-weight:600">${v.date}${i===0?' <span style="font-size:10px;background:var(--gold);color:#1a1a2e;padding:1px 5px;border-radius:4px;margin-left:4px">最新</span>':''}</span>
           <button onclick='loadTargetVersion(${JSON.stringify(v.targets)})' style="font-size:11px;padding:3px 8px;background:rgba(160,196,255,0.15);color:#a0c4ff;border:1px solid rgba(160,196,255,0.3);border-radius:5px;cursor:pointer;font-family:inherit">この目標を適用</button>
         </div>
+        ${(v.cashPct || v.secPct) ? `<div style="font-size:11px;color:var(--gold);margin-bottom:4px">現金 ${v.cashPct}% ／ 証券 ${v.secPct}%</div>` : ''}
         ${v.memo ? `<div style="font-size:11px;color:var(--text-soft);margin-bottom:4px">📝 ${v.memo}</div>` : ''}
         <div style="font-size:11px;color:var(--paper);display:flex;flex-wrap:wrap;gap:4px">${v.targets.map(t => `<span style="background:rgba(255,255,255,0.08);padding:2px 6px;border-radius:4px">${t.name} ${t.pct}%</span>`).join('')}</div>
       </div>`).join('');
@@ -1243,7 +1201,6 @@ function loadTargetVersion(targets) {
   targets.forEach(t => { map[t.name] = t.pct; });
   secHoldings.forEach(h => { h.target_pct = map[h.name] ?? null; });
   renderHoldingsTable();
-  drawPieCharts();
 }
 
 function toggleHistory() {
