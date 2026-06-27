@@ -428,7 +428,10 @@ select.csv-bank, select.sec-month-sel {
         <button onclick="addHoldingRow()" style="margin-top:8px;width:100%;padding:8px;border:1px dashed rgba(255,255,255,0.2);border-radius:8px;background:none;color:var(--text-soft);font-family:inherit;font-size:12px;cursor:pointer;">＋ 手動追加</button>
       </div>
 
-      <button class="btn-confirm-all" id="secConfirmBtn" onclick="confirmSecurities()" style="background:var(--celadon);margin-top:14px;">スプレッドシートに保存</button>
+      <div style="display:flex;gap:8px;margin-top:14px;">
+        <button class="btn-confirm-all" id="secConfirmBtn" onclick="confirmSecurities()" style="background:var(--celadon);flex:2;">スプレッドシートに保存</button>
+        <button class="btn-confirm-all" id="secChartBtn" onclick="createPortfolioChart()" style="background:#7b68ee;flex:1;font-size:13px;">📊 円グラフ作成</button>
+      </div>
       <div class="success-msg" id="secSuccess"></div>
     </div>
   </div>
@@ -508,6 +511,7 @@ function updateConnectionStatus() {
     : 'GAS WebアプリURLを設定してください。';
   document.getElementById('manualSubmitBtn').disabled = !gasUrl;
   document.getElementById('secConfirmBtn').disabled = !gasUrl;
+  document.getElementById('secChartBtn').disabled = !gasUrl;
 }
 
 // ============================================================
@@ -982,6 +986,23 @@ async function confirmSecurities() {
     showError('secError', 'エラー: ' + err.message);
   }
   btn.disabled = !gasUrl;
+}
+
+async function createPortfolioChart() {
+  const sheetName = document.getElementById('secMonth').value;
+  const btn = document.getElementById('secChartBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ 作成中...';
+  document.getElementById('secError').classList.remove('show');
+  try {
+    const data = await postRequest({ action: 'createChart', sheetName }, 30000);
+    document.getElementById('secSuccess').textContent = `📊 ${data.message}`;
+    document.getElementById('secSuccess').classList.add('show');
+  } catch (err) {
+    showError('secError', 'グラフ作成エラー: ' + err.message);
+  }
+  btn.disabled = !gasUrl;
+  btn.textContent = '📊 円グラフ作成';
 }
 
 // ============================================================
