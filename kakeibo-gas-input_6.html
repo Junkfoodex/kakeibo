@@ -413,10 +413,7 @@ select.csv-bank, select.sec-month-sel {
               <tr style="background:rgba(184,146,63,0.2);">
                 <th style="padding:8px 5px;text-align:left;color:var(--gold);font-size:10px;white-space:nowrap">証券会社</th>
                 <th style="padding:8px 5px;text-align:left;color:var(--gold);font-size:10px;white-space:nowrap">銘柄名</th>
-                <th style="padding:8px 5px;text-align:right;color:var(--gold);font-size:10px;white-space:nowrap">数量</th>
-                <th style="padding:8px 5px;text-align:right;color:var(--gold);font-size:10px;white-space:nowrap">単価</th>
-                <th style="padding:8px 5px;text-align:right;color:var(--gold);font-size:10px;white-space:nowrap">受渡金額</th>
-                <th style="padding:8px 5px;text-align:right;color:var(--gold);font-size:10px;white-space:nowrap">現在単価</th>
+                <th style="padding:8px 5px;text-align:right;color:var(--gold);font-size:10px;white-space:nowrap">取得金額</th>
                 <th style="padding:8px 5px;text-align:right;color:var(--gold);font-size:10px;white-space:nowrap">現在価値</th>
                 <th style="padding:8px 5px;text-align:right;color:var(--gold);font-size:10px;white-space:nowrap">評価損益</th>
                 <th style="padding:8px 5px;text-align:right;color:var(--gold);font-size:10px;white-space:nowrap">騰落率%</th>
@@ -992,6 +989,8 @@ JSONのみ返答（説明不要）：
       document.getElementById('secSuccess').textContent = `✅ ${secHoldings.length}件を抽出${dupMsg}`;
       document.getElementById('secSuccess').classList.add('show');
     }
+    // 解析直後に現在ポートフォリオの円グラフを表示
+    setTimeout(drawPieCharts, 100);
   } else if (!errors.length) {
     showError('secError', '銘柄データを抽出できませんでした。');
   }
@@ -1024,12 +1023,9 @@ function renderHoldingsTable() {
         <option value="確定拠出年金" ${h.company==='確定拠出年金'?'selected':''}>確定拠出年金</option>
         <option value="${escapeAttr(h.company||'')}" ${!['楽天証券','SBI証券','確定拠出年金'].includes(h.company)?'selected':''}>${escapeAttr(h.company||'その他')}</option>
       </select></td>
-      <td style="padding:4px">${inp(h.name||'', i, 'name', 96)}</td>
-      <td style="padding:4px">${inp(h.quantity, i, 'quantity', 56)}</td>
-      <td style="padding:4px">${inp(h.unit_price, i, 'unit_price', 66)}</td>
-      <td style="padding:4px">${inp(h.investment, i, 'investment', 76)}</td>
-      <td style="padding:4px">${inp(h.current_unit_price, i, 'current_unit_price', 66)}</td>
-      <td style="padding:4px">${inp(h.current_value, i, 'current_value', 76)}</td>
+      <td style="padding:4px">${inp(h.name||'', i, 'name', 110)}</td>
+      <td style="padding:4px">${inp(h.investment, i, 'investment', 80)}</td>
+      <td style="padding:4px">${inp(h.current_value, i, 'current_value', 80)}</td>
       <td style="padding:4px;text-align:right;${gainStyle};font-family:'DM Mono',monospace;white-space:nowrap;font-size:11px">${gainText}</td>
       <td style="padding:4px;text-align:right;${gainStyle};font-family:'DM Mono',monospace;white-space:nowrap;font-size:11px">${rateText}</td>
       <td style="padding:4px;text-align:right;color:#a0c4ff;font-family:'DM Mono',monospace;font-size:11px;white-space:nowrap">${currentPct}%</td>
@@ -1154,6 +1150,8 @@ function drawPieCharts() {
   document.getElementById('portfolioCompareSection').style.display = 'block';
   document.getElementById('targetSaveSection').style.display = hasTarget ? 'block' : 'none';
   document.getElementById('historyWrapper').style.display = 'block';
+  // 目標グラフは目標%未入力時は非表示
+  document.getElementById('targetPieChart').closest('div').style.display = hasTarget ? '' : 'none';
 
   const labels = secHoldings.map(h => h.name);
   const currentData = secHoldings.map(h => Number(h.current_value) || 0);
