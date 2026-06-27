@@ -520,9 +520,6 @@ function updateConnectionStatus() {
   document.getElementById('secConfirmBtn').disabled = !gasUrl;
 }
 
-// ============================================================
-// 画像圧縮（canvas）
-// ============================================================
 function compressImage(file, maxWidth) {
   maxWidth = maxWidth || 480;
   return new Promise(function(resolve, reject) {
@@ -538,7 +535,6 @@ function compressImage(file, maxWidth) {
       canvas.height = h;
       canvas.getContext('2d').drawImage(img, 0, 0, w, h);
       var base64 = canvas.toDataURL('image/jpeg', 0.40).split(',')[1];
-      // サイズが大きすぎる場合、さらに圧縮
       if (base64.length > 35000) {
         canvas.getContext('2d').drawImage(img, 0, 0, w, h);
         base64 = canvas.toDataURL('image/jpeg', 0.25).split(',')[1];
@@ -550,9 +546,6 @@ function compressImage(file, maxWidth) {
   });
 }
 
-// ============================================================
-// GASリクエスト（fetch方式）
-// ============================================================
 async function gasRequest(params, timeoutMs) {
   timeoutMs = timeoutMs || 20000;
   if (!gasUrl) throw new Error('GAS URLが未設定です');
@@ -568,7 +561,6 @@ async function gasRequest(params, timeoutMs) {
     });
     clearTimeout(timer);
     const text = await response.text();
-    // JSONP形式（callback(...)）の場合は中身を取り出す
     const match = text.match(/^[^(]+\(([\s\S]*)\)$/);
     const data = JSON.parse(match ? match[1] : text);
     if (data && data.success) return data;
@@ -579,12 +571,8 @@ async function gasRequest(params, timeoutMs) {
     throw err;
   }
 }
-// 後方互換のためのエイリアス
 function jsonpRequest(params, timeoutMs) { return gasRequest(params, timeoutMs); }
 
-// ============================================================
-// POST送信（画像など大きなデータ用）
-// ============================================================
 async function postRequest(params, timeoutMs) {
   timeoutMs = timeoutMs || 50000;
   if (!gasUrl) throw new Error('GAS URLが未設定です');
@@ -613,9 +601,6 @@ async function postRequest(params, timeoutMs) {
   }
 }
 
-// ============================================================
-// AI解析（GAS経由でGemini）
-// ============================================================
 async function callImageAI(base64, prompt) {
   const data = await postRequest({
     action: 'analyzeImage',
@@ -635,9 +620,6 @@ async function callTextAI(text, prompt) {
   return data.text;
 }
 
-// ============================================================
-// 写真
-// ============================================================
 document.getElementById('photoInput').addEventListener('change', function(e) {
   if (e.target.files[0]) {
     photoFile = e.target.files[0];
@@ -666,7 +648,9 @@ async function analyzePhoto() {
 {"entries":[{"date":"2026-06-15","description":"店名・内容","category":"食費/日用品/交通費/光熱費/通信費/医療費/住居費/保険/娯楽/教育/給与/ボーナス/副業/その他収入/その他のいずれか","type":"expense または income","amount":1500}]}
 日付が不明な場合は今日の日付(${new Date().toISOString().slice(0,10)})を使用。金額は数値のみ。`;
     const text = await callImageAI(base64, prompt);
-    const parsed = JSON.parse(text.replace(/```json|```/g,'').trim());
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('JSONを抽出できませんでした');
+    const parsed = JSON.parse(jsonMatch[0]);
     reviewData.photo = parsed.entries || [];
     if (!reviewData.photo.length) {
       showError('photoError', '明細を検出できませんでした。');
@@ -680,9 +664,6 @@ async function analyzePhoto() {
   document.getElementById('photoAnalyzeBtn').disabled = false;
 }
 
-// ============================================================
-// CSV
-// ============================================================
 document.getElementById('csvInput').addEventListener('change', function(e) {
   if (e.target.files[0]) {
     csvFile = e.target.files[0];
@@ -711,7 +692,9 @@ async function analyzeCSV() {
 {"entries":[{"date":"2026-06-15","description":"内容","category":"食費/日用品/交通費/光熱費/通信費/医療費/住居費/保険/娯楽/教育/給与/ボーナス/副業/その他収入/その他のいずれか","type":"expense または income","amount":1500}]}
 金額は正の数値のみ。CSV:`;
     const rawText = await callTextAI(text, prompt);
-    const parsed = JSON.parse(rawText.replace(/```json|```/g,'').trim());
+    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('JSONを抽出できませんでした');
+    const parsed = JSON.parse(jsonMatch[0]);
     reviewData.csv = parsed.entries || [];
     if (!reviewData.csv.length) {
       showError('csvError', '取引データが見つかりませんでした。');
@@ -725,9 +708,6 @@ async function analyzeCSV() {
   document.getElementById('csvAnalyzeBtn').disabled = false;
 }
 
-// ============================================================
-// レビュー
-// ============================================================
 function renderReview(kind) {
   const list = document.getElementById(kind + 'Review');
   const allCats = [...CATEGORIES.expense, ...CATEGORIES.income];
@@ -769,9 +749,6 @@ async function confirmReview(kind) {
   btn.disabled = !gasUrl;
 }
 
-// ============================================================
-// 手入力
-// ============================================================
 async function addManualEntry() {
   const amount = Number(document.getElementById('mAmount').value);
   const desc = document.getElementById('mDesc').value.trim();
@@ -800,9 +777,6 @@ async function addManualEntry() {
   btn.disabled = !gasUrl;
 }
 
-// ============================================================
-// 証券スクリーンショット
-// ============================================================
 function initSecMonth() {
   const sel = document.getElementById('secMonth');
   const now = new Date();
@@ -851,7 +825,9 @@ async function analyzeSecuritiesPhoto() {
 - 金額は数値のみ（¥マーク・カンマ不要）
 - 取得金額が画面にない場合は null`;
     const text = await callImageAI(base64, prompt);
-    const parsed = JSON.parse(text.replace(/```json|```/g,'').trim());
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('AIの返答からJSONを抽出できませんでした: ' + text.substring(0, 100));
+    const parsed = JSON.parse(jsonMatch[0]);
     const type = parsed.securities_type || '';
     let key = null;
     if (type.includes('楽天')) key = 'rakuten';
@@ -916,9 +892,6 @@ async function confirmSecurities() {
   btn.disabled = !gasUrl;
 }
 
-// ============================================================
-// ユーティリティ
-// ============================================================
 function showError(id, msg) {
   const el = document.getElementById(id);
   el.textContent = msg;
