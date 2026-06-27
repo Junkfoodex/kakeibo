@@ -270,6 +270,7 @@ select.csv-bank, select.sec-month-sel {
 }
 .section-title::before { content: ''; width: 4px; height: 14px; background: var(--gold); border-radius: 2px; }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 </head>
 <body>
 
@@ -445,6 +446,38 @@ select.csv-bank, select.sec-month-sel {
           <button class="btn-confirm-all" id="rebalanceCalcBtn" onclick="calcRebalance()" style="background:#4a7ab5;flex:1;font-size:13px;">⚖️ 計算してシートに保存</button>
         </div>
         <div id="rebalanceResult" style="margin-top:10px;font-size:12px;display:none;"></div>
+      </div>
+
+      <!-- ポートフォリオ比較チャート -->
+      <div id="portfolioCompareSection" style="margin-top:16px;display:none;padding:14px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:12px;">
+        <div style="font-size:13px;font-weight:600;color:var(--paper);margin-bottom:12px;">📊 ポートフォリオ比較</div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center;">
+          <div style="flex:1;min-width:160px;text-align:center;">
+            <div style="font-size:11px;color:var(--text-soft);margin-bottom:6px;">現在</div>
+            <canvas id="currentPieChart" style="max-width:200px;max-height:200px;"></canvas>
+          </div>
+          <div style="flex:1;min-width:160px;text-align:center;">
+            <div style="font-size:11px;color:var(--gold);margin-bottom:6px;">目標</div>
+            <canvas id="targetPieChart" style="max-width:200px;max-height:200px;"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- 目標ポートフォリオ保存 -->
+      <div id="targetSaveSection" style="margin-top:14px;display:none;padding:12px;background:rgba(184,146,63,0.08);border:1px solid rgba(184,146,63,0.25);border-radius:12px;">
+        <div style="font-size:13px;font-weight:600;color:var(--gold);margin-bottom:8px;">💾 目標配分を保存（履歴に残す）</div>
+        <input type="text" id="targetMemo" placeholder="変更理由・メモ（例：米国比率を下げてバランス型に変更）"
+          style="width:100%;padding:8px;background:rgba(255,255,255,0.08);color:var(--paper);border:1px solid rgba(184,146,63,0.3);border-radius:6px;font-size:12px;font-family:inherit;box-sizing:border-box;margin-bottom:8px;">
+        <button class="btn-confirm-all" id="saveTargetBtn" onclick="saveTargetPortfolio()" style="background:var(--gold);color:#1a1a2e;width:100%;font-size:13px;">💾 この目標配分を保存</button>
+      </div>
+
+      <!-- 変更履歴 -->
+      <div style="margin-top:12px;display:none;" id="historyWrapper">
+        <button onclick="toggleHistory()" id="historyToggleBtn"
+          style="width:100%;padding:8px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:var(--text-soft);font-family:inherit;font-size:12px;cursor:pointer;text-align:left;">
+          📋 目標変更履歴 ▼
+        </button>
+        <div id="historySection" style="display:none;margin-top:8px;"></div>
       </div>
 
       <div style="display:flex;gap:8px;margin-top:14px;">
@@ -1013,6 +1046,7 @@ function updateTargetSum() {
     el.textContent = `目標合計: ${sum.toFixed(1)}%`;
     el.style.color = Math.abs(sum - 100) < 0.1 ? 'var(--celadon)' : (sum > 100 ? 'var(--vermillion)' : 'var(--text-soft)');
   }
+  drawPieCharts();
 }
 
 async function calcRebalance() {
@@ -1103,6 +1137,109 @@ async function confirmSecurities() {
     showError('secError', 'エラー: ' + err.message);
   }
   btn.disabled = !gasUrl;
+}
+
+// ---- ポートフォリオ比較チャート ----
+let currentChartInst = null, targetChartInst = null;
+const PIE_COLORS = ['#4e91d6','#e8a838','#6bc48a','#e05d5d','#9b7de8','#5bb8c4','#d97b2e','#a8c84e','#c46b9b','#7bb3f0','#f0c45a','#60d0a0'];
+
+function drawPieCharts() {
+  const totalVal = secHoldings.reduce((s, h) => s + (Number(h.current_value) || 0), 0);
+  const hasTarget = secHoldings.some(h => Number(h.target_pct) > 0);
+  if (totalVal === 0) return;
+
+  document.getElementById('portfolioCompareSection').style.display = 'block';
+  document.getElementById('targetSaveSection').style.display = hasTarget ? 'block' : 'none';
+  document.getElementById('historyWrapper').style.display = 'block';
+
+  const labels = secHoldings.map(h => h.name);
+  const currentData = secHoldings.map(h => Number(h.current_value) || 0);
+  const targetData = secHoldings.map(h => Number(h.target_pct) || 0);
+
+  const makeChart = (id, data, inst) => {
+    if (inst) inst.destroy();
+    const ctx = document.getElementById(id).getContext('2d');
+    return new Chart(ctx, {
+      type: 'pie',
+      data: {
+        labels,
+        datasets: [{ data, backgroundColor: PIE_COLORS, borderWidth: 1, borderColor: 'rgba(0,0,0,0.3)' }]
+      },
+      options: {
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: ctx => `${ctx.label}: ${ctx.parsed.toLocaleString()}${id === 'targetPieChart' ? '%' : '円'}` } }
+        },
+        animation: { duration: 600 }
+      }
+    });
+  };
+  currentChartInst = makeChart('currentPieChart', currentData, currentChartInst);
+  if (hasTarget) targetChartInst = makeChart('targetPieChart', targetData, targetChartInst);
+}
+
+async function saveTargetPortfolio() {
+  const targets = secHoldings.filter(h => Number(h.target_pct) > 0).map(h => ({ name: h.name, pct: Number(h.target_pct) }));
+  if (!targets.length) { alert('目標%が入力されていません'); return; }
+  const memo = document.getElementById('targetMemo').value;
+  const btn = document.getElementById('saveTargetBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ 保存中...';
+  try {
+    const data = await postRequest({ action: 'saveTarget', targets: JSON.stringify(targets), memo }, 20000);
+    document.getElementById('secSuccess').textContent = `✅ ${data.message}`;
+    document.getElementById('secSuccess').classList.add('show');
+    document.getElementById('targetMemo').value = '';
+    loadHistory();
+  } catch (err) {
+    showError('secError', '目標保存エラー: ' + err.message);
+  }
+  btn.disabled = false;
+  btn.textContent = '💾 この目標配分を保存';
+}
+
+async function loadHistory() {
+  const el = document.getElementById('historySection');
+  el.innerHTML = '<div style="color:var(--text-soft);font-size:12px;padding:8px">読み込み中...</div>';
+  try {
+    const data = await postRequest({ action: 'getTargetHistory' }, 15000);
+    if (!data.history || !data.history.length) {
+      el.innerHTML = '<div style="color:var(--text-soft);font-size:12px;padding:8px">保存済みの目標がありません</div>';
+      return;
+    }
+    el.innerHTML = data.history.map((v, i) => `
+      <div style="padding:10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;margin-bottom:6px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <span style="font-size:12px;color:var(--gold);font-weight:600">${v.date}${i===0?' <span style="font-size:10px;background:var(--gold);color:#1a1a2e;padding:1px 5px;border-radius:4px;margin-left:4px">最新</span>':''}</span>
+          <button onclick='loadTargetVersion(${JSON.stringify(v.targets)})' style="font-size:11px;padding:3px 8px;background:rgba(160,196,255,0.15);color:#a0c4ff;border:1px solid rgba(160,196,255,0.3);border-radius:5px;cursor:pointer;font-family:inherit">この目標を適用</button>
+        </div>
+        ${v.memo ? `<div style="font-size:11px;color:var(--text-soft);margin-bottom:4px">📝 ${v.memo}</div>` : ''}
+        <div style="font-size:11px;color:var(--paper);display:flex;flex-wrap:wrap;gap:4px">${v.targets.map(t => `<span style="background:rgba(255,255,255,0.08);padding:2px 6px;border-radius:4px">${t.name} ${t.pct}%</span>`).join('')}</div>
+      </div>`).join('');
+  } catch (err) {
+    el.innerHTML = `<div style="color:var(--vermillion);font-size:12px;padding:8px">読み込み失敗: ${err.message}</div>`;
+  }
+}
+
+function loadTargetVersion(targets) {
+  const map = {};
+  targets.forEach(t => { map[t.name] = t.pct; });
+  secHoldings.forEach(h => { h.target_pct = map[h.name] ?? null; });
+  renderHoldingsTable();
+  drawPieCharts();
+}
+
+function toggleHistory() {
+  const el = document.getElementById('historySection');
+  const btn = document.getElementById('historyToggleBtn');
+  if (el.style.display === 'none') {
+    el.style.display = 'block';
+    btn.textContent = '📋 目標変更履歴 ▲';
+    loadHistory();
+  } else {
+    el.style.display = 'none';
+    btn.textContent = '📋 目標変更履歴 ▼';
+  }
 }
 
 async function createPortfolioChart() {
