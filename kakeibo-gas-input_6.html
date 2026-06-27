@@ -419,6 +419,8 @@ select.csv-bank, select.sec-month-sel {
                 <th style="padding:8px 5px;text-align:right;color:var(--gold);font-size:10px;white-space:nowrap">現在価値</th>
                 <th style="padding:8px 5px;text-align:right;color:var(--gold);font-size:10px;white-space:nowrap">評価損益</th>
                 <th style="padding:8px 5px;text-align:right;color:var(--gold);font-size:10px;white-space:nowrap">騰落率%</th>
+                <th style="padding:8px 5px;text-align:right;color:#a0c4ff;font-size:10px;white-space:nowrap">現在%</th>
+                <th style="padding:8px 5px;text-align:right;color:#a0c4ff;font-size:10px;white-space:nowrap">目標%</th>
                 <th style="padding:8px 4px;color:var(--gold);font-size:10px;"></th>
               </tr>
             </thead>
@@ -426,6 +428,23 @@ select.csv-bank, select.sec-month-sel {
           </table>
         </div>
         <button onclick="addHoldingRow()" style="margin-top:8px;width:100%;padding:8px;border:1px dashed rgba(255,255,255,0.2);border-radius:8px;background:none;color:var(--text-soft);font-family:inherit;font-size:12px;cursor:pointer;">＋ 手動追加</button>
+      </div>
+
+      <!-- リバランス計算セクション -->
+      <div id="rebalanceSection" style="margin-top:16px;padding:14px;background:rgba(160,196,255,0.07);border:1px solid rgba(160,196,255,0.2);border-radius:12px;">
+        <div style="font-size:13px;font-weight:600;color:#a0c4ff;margin-bottom:10px;">⚖️ リバランス計算</div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;">
+          <span style="font-size:12px;color:var(--text-soft);">追加投資予算</span>
+          <input type="number" id="rebalanceBudget" value="0" min="0"
+            style="width:120px;background:rgba(255,255,255,0.08);color:var(--paper);border:1px solid rgba(160,196,255,0.3);border-radius:6px;padding:5px 8px;font-size:13px;font-family:'DM Mono',monospace;text-align:right;">
+          <span style="font-size:12px;color:var(--text-soft);">円</span>
+          <span id="targetPctSum" style="font-size:11px;color:var(--text-soft);margin-left:auto;">目標合計: 0%</span>
+        </div>
+        <div style="font-size:11px;color:var(--text-soft);margin-bottom:10px;">※ 上の表の「目標%」欄に各銘柄の目標比率を入力してください（合計100%）</div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn-confirm-all" id="rebalanceCalcBtn" onclick="calcRebalance()" style="background:#4a7ab5;flex:1;font-size:13px;">⚖️ 計算してシートに保存</button>
+        </div>
+        <div id="rebalanceResult" style="margin-top:10px;font-size:12px;display:none;"></div>
       </div>
 
       <div style="display:flex;gap:8px;margin-top:14px;">
@@ -943,6 +962,7 @@ JSONのみ返答（説明不要）：
 }
 
 function renderHoldingsTable() {
+  const totalVal = secHoldings.reduce((s, h) => s + (Number(h.current_value) || 0), 0);
   const inp = (val, idx, field, w) =>
     `<input type="${typeof val === 'number' || val === null ? 'number' : 'text'}" value="${val !== null && val !== undefined ? escapeAttr(String(val)) : ''}"
       onchange="secHoldings[${idx}]['${field}']=this.type==='number'?(Number(this.value)||null):this.value"
@@ -957,6 +977,10 @@ function renderHoldingsTable() {
     const rateText = h.return_rate !== null && h.return_rate !== undefined
       ? (h.return_rate >= 0 ? '+' : '') + h.return_rate + '%'
       : '－';
+    const currentPct = totalVal > 0 && h.current_value
+      ? (Number(h.current_value) / totalVal * 100).toFixed(1)
+      : '－';
+    const targetPct = h.target_pct !== null && h.target_pct !== undefined ? h.target_pct : '';
     return `<tr style="border-top:1px solid rgba(255,255,255,0.06)">
       <td style="padding:4px"><select onchange="secHoldings[${i}].company=this.value" style="width:86px;background:rgba(255,255,255,0.08);color:var(--paper);border:1px solid rgba(255,255,255,0.1);border-radius:4px;padding:3px 4px;font-size:11px;font-family:inherit">
         <option value="楽天証券" ${h.company==='楽天証券'?'selected':''}>楽天証券</option>
@@ -972,9 +996,75 @@ function renderHoldingsTable() {
       <td style="padding:4px">${inp(h.current_value, i, 'current_value', 76)}</td>
       <td style="padding:4px;text-align:right;${gainStyle};font-family:'DM Mono',monospace;white-space:nowrap;font-size:11px">${gainText}</td>
       <td style="padding:4px;text-align:right;${gainStyle};font-family:'DM Mono',monospace;white-space:nowrap;font-size:11px">${rateText}</td>
+      <td style="padding:4px;text-align:right;color:#a0c4ff;font-family:'DM Mono',monospace;font-size:11px;white-space:nowrap">${currentPct}%</td>
+      <td style="padding:4px"><input type="number" min="0" max="100" step="0.1" value="${targetPct}"
+        onchange="secHoldings[${i}].target_pct=Number(this.value)||null;updateTargetSum()"
+        style="width:48px;background:rgba(160,196,255,0.12);color:#a0c4ff;border:1px solid rgba(160,196,255,0.3);border-radius:4px;padding:3px 4px;font-size:11px;font-family:'DM Mono',monospace;text-align:right;">%</td>
       <td style="padding:4px"><button onclick="removeHoldingRow(${i})" style="background:none;border:none;color:var(--vermillion);cursor:pointer;font-size:14px;padding:2px">✕</button></td>
     </tr>`;
   }).join('');
+  updateTargetSum();
+}
+
+function updateTargetSum() {
+  const sum = secHoldings.reduce((s, h) => s + (Number(h.target_pct) || 0), 0);
+  const el = document.getElementById('targetPctSum');
+  if (el) {
+    el.textContent = `目標合計: ${sum.toFixed(1)}%`;
+    el.style.color = Math.abs(sum - 100) < 0.1 ? 'var(--celadon)' : (sum > 100 ? 'var(--vermillion)' : 'var(--text-soft)');
+  }
+}
+
+async function calcRebalance() {
+  const totalVal = secHoldings.reduce((s, h) => s + (Number(h.current_value) || 0), 0);
+  const budget = Number(document.getElementById('rebalanceBudget').value) || 0;
+  const totalFuture = totalVal + budget;
+  const targetSum = secHoldings.reduce((s, h) => s + (Number(h.target_pct) || 0), 0);
+  if (Math.abs(targetSum - 100) > 1) {
+    alert(`目標%の合計が${targetSum.toFixed(1)}%です。合計100%になるよう入力してください。`);
+    return;
+  }
+
+  const rebalance = secHoldings.map(h => {
+    const cur = Number(h.current_value) || 0;
+    const tgt = Number(h.target_pct) || 0;
+    const targetAmt = totalFuture * tgt / 100;
+    const buyAmt = Math.round(targetAmt - cur);
+    return {
+      name: h.name,
+      current_value: cur,
+      current_pct: totalVal > 0 ? +(cur / totalVal * 100).toFixed(1) : 0,
+      target_pct: tgt,
+      target_value: Math.round(targetAmt),
+      buy_amount: buyAmt
+    };
+  });
+
+  // プレビュー表示
+  const resultEl = document.getElementById('rebalanceResult');
+  resultEl.style.display = 'block';
+  resultEl.innerHTML = rebalance.map(r => {
+    const color = r.buy_amount > 0 ? 'var(--celadon)' : (r.buy_amount < 0 ? 'var(--vermillion)' : 'var(--text-soft)');
+    const label = r.buy_amount > 0 ? `＋${r.buy_amount.toLocaleString()}円 買い増し` : (r.buy_amount < 0 ? `${r.buy_amount.toLocaleString()}円 売却` : '変更なし');
+    return `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.06)">
+      <span style="flex:2;color:var(--paper)">${r.name}</span>
+      <span style="flex:1;text-align:right;color:var(--text-soft)">${r.current_pct}%→${r.target_pct}%</span>
+      <span style="flex:1;text-align:right;color:${color};font-family:'DM Mono',monospace">${label}</span>
+    </div>`;
+  }).join('');
+
+  // スプレッドシートに保存
+  const sheetName = document.getElementById('secMonth').value;
+  const btn = document.getElementById('rebalanceCalcBtn');
+  btn.disabled = true;
+  try {
+    await postRequest({ action: 'setRebalance', sheetName, rebalance: JSON.stringify(rebalance), budget: String(budget) }, 30000);
+    document.getElementById('secSuccess').textContent = `✅ リバランス計算結果を${sheetName}シートに保存しました`;
+    document.getElementById('secSuccess').classList.add('show');
+  } catch (err) {
+    showError('secError', 'リバランス保存エラー: ' + err.message);
+  }
+  btn.disabled = !gasUrl;
 }
 
 function removeHoldingRow(idx) {
