@@ -908,7 +908,12 @@ function renderHoldingsTable() {
       ? (h.return_rate >= 0 ? '+' : '') + h.return_rate + '%'
       : '－';
     return `<tr style="border-top:1px solid rgba(255,255,255,0.06)">
-      <td style="padding:4px">${inp(h.company||'', i, 'company', 76)}</td>
+      <td style="padding:4px"><select onchange="secHoldings[${i}].company=this.value" style="width:86px;background:rgba(255,255,255,0.08);color:var(--paper);border:1px solid rgba(255,255,255,0.1);border-radius:4px;padding:3px 4px;font-size:11px;font-family:inherit">
+        <option value="楽天証券" ${h.company==='楽天証券'?'selected':''}>楽天証券</option>
+        <option value="SBI証券" ${h.company==='SBI証券'?'selected':''}>SBI証券</option>
+        <option value="確定拠出年金" ${h.company==='確定拠出年金'?'selected':''}>確定拠出年金</option>
+        <option value="${escapeAttr(h.company||'')}" ${!['楽天証券','SBI証券','確定拠出年金'].includes(h.company)?'selected':''}>${escapeAttr(h.company||'その他')}</option>
+      </select></td>
       <td style="padding:4px">${inp(h.name||'', i, 'name', 96)}</td>
       <td style="padding:4px">${inp(h.quantity, i, 'quantity', 56)}</td>
       <td style="padding:4px">${inp(h.unit_price, i, 'unit_price', 66)}</td>
