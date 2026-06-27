@@ -906,12 +906,37 @@ JSONのみ返答（説明不要）：
   document.getElementById('secLoading').classList.remove('show');
   document.getElementById('secAnalyzeBtn').disabled = false;
 
+  // 銘柄名が同じものは重複除去（より多くのデータを持つ方を残す）
+  const seen = {};
+  const deduped = [];
+  let dupCount = 0;
+  secHoldings.forEach(h => {
+    const key = h.name.trim();
+    if (!seen[key]) {
+      seen[key] = deduped.length;
+      deduped.push(h);
+    } else {
+      // 既存エントリとデータ量を比較して、より多い方を残す
+      const existing = deduped[seen[key]];
+      const existingScore = [existing.quantity, existing.investment, existing.current_value, existing.unrealized_gain, existing.return_rate].filter(v => v !== null).length;
+      const newScore = [h.quantity, h.investment, h.current_value, h.unrealized_gain, h.return_rate].filter(v => v !== null).length;
+      if (newScore > existingScore) deduped[seen[key]] = h;
+      dupCount++;
+    }
+  });
+  secHoldings = deduped;
+
   if (errors.length) showError('secError', errors.join('\n'));
 
+  const dupMsg = dupCount > 0 ? `（重複${dupCount}件を自動除去）` : '';
   if (secHoldings.length > 0) {
     renderHoldingsTable();
     document.getElementById('secHoldingsSection').style.display = 'block';
     document.getElementById('secConfirmBtn').classList.add('show');
+    if (dupCount > 0) {
+      document.getElementById('secSuccess').textContent = `✅ ${secHoldings.length}件を抽出${dupMsg}`;
+      document.getElementById('secSuccess').classList.add('show');
+    }
   } else if (!errors.length) {
     showError('secError', '銘柄データを抽出できませんでした。');
   }
