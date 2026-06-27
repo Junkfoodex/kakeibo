@@ -857,10 +857,12 @@ async function analyzeSecuritiesPhotos() {
       `AI解析中... (${i + 1}/${secFiles.length}: ${secFiles[i].name})`;
     try {
       const base64 = await compressImage(secFiles[i], 640);
-      const prompt = `この証券口座スクリーンショットから保有銘柄を全て抽出し、下記JSON形式のみ返してください（説明不要）。
-{"co":"楽天証券","h":[{"n":"eMAXIS Slim 米国株式","q":1,"i":150000,"v":200000,"g":50000,"r":33.3},{"n":"銘柄B","q":5,"i":null,"v":80000,"g":null,"r":null}]}
-・co=証券会社名 n=銘柄名 q=数量(数値) i=取得金額(数値orNull) v=現在評価額(数値) g=評価損益(数値orNull) r=騰落率%(数値orNull)
-・全フィールドは数値かnull（文字列・¥・カンマ不可）`;
+      const prompt = `この証券口座スクリーンショットに実際に表示されている保有銘柄データを抽出してください。
+【重要】画像に表示されていない銘柄・数値は絶対に追加しないこと。画像から読み取れない項目はnullにすること。
+JSONのみ返答（説明不要）：
+{"co":"楽天証券","h":[{"n":"eMAXIS Slim 米国株式(S&P500)","q":1,"i":150000,"v":200000,"g":50000,"r":33.3},{"n":"別の銘柄","q":5,"i":null,"v":80000,"g":null,"r":null}]}
+フィールド: co=証券会社名 n=銘柄名(画像の文字そのまま) q=数量 i=取得金額 v=現在評価額 g=評価損益 r=騰落率%
+数値はカンマ・¥不要。読み取れない場合はnull。`;
 
       const text = await callImageAI(base64, prompt);
       if (!text) { errors.push(`${secFiles[i].name}: AI応答が空でした`); continue; }
