@@ -859,9 +859,26 @@ co=会社名(例:楽天証券/SBI証券/確定拠出年金) q=株数 i=取得金
 全銘柄含める。数値のみ(¥カンマ不要)。不明はnull。`;
 
       const text = await callImageAI(base64, prompt);
+      if (!text) { errors.push(`${secFiles[i].name}: AI応答が空でした`); continue; }
       const jsonMatch = text.match(/\{[\s\S]*/);
-      if (!jsonMatch) { errors.push(`${secFiles[i].name}: JSONを抽出できませんでした`); continue; }
-      const parsed = JSON.parse(repairJson(jsonMatch[0]));
+      if (!jsonMatch) {
+        errors.push(`${secFiles[i].name}: JSONなし (AI応答: ${text.substring(0, 100)})`);
+        continue;
+      }
+      let parsed;
+      try {
+        parsed = JSON.parse(repairJson(jsonMatch[0]));
+      } catch (parseErr) {
+        // 最後のカンマ位置で切り詰めて再試行
+        const raw = jsonMatch[0];
+        const lastComma = raw.lastIndexOf(',');
+        try {
+          parsed = JSON.parse(repairJson(lastComma > 0 ? raw.substring(0, lastComma) : raw));
+        } catch (e2) {
+          errors.push(`${secFiles[i].name}: JSON解析失敗 → ${raw.substring(0, 120)}`);
+          continue;
+        }
+      }
       const company = parsed.co || parsed.company || '不明';
       const holdingsList = parsed.h || parsed.holdings || [];
       holdingsList.forEach(h => secHoldings.push({
@@ -977,6 +994,14 @@ function showError(id, msg) {
 }
 function escapeAttr(str) { return String(str).replace(/"/g, '&quot;'); }
 function repairJson(str) {
+  const start = str.indexOf('{');
+  if (start === -1) return '{}';
+  str = str.substring(start);
+  // 末尾の不完全なキー・値を除去（例: ,"n": や ,"n" や , のみ）
+  str = str.replace(/,\s*"[^"]*"\s*:\s*$/, '');
+  str = str.replace(/,\s*"[^"]*"\s*$/, '');
+  str = str.replace(/,\s*$/, '');
+  // 開いたブラケット・文字列を閉じる
   const opens = [];
   let inStr = false, esc = false;
   for (const c of str) {
@@ -986,10 +1011,9 @@ function repairJson(str) {
     if (inStr) continue;
     if (c === '{') opens.push('}');
     else if (c === '[') opens.push(']');
-    else if (c === '}' || c === ']') opens.pop();
+    else if ((c === '}' || c === ']') && opens.length) opens.pop();
   }
   if (inStr) str += '"';
-  str = str.replace(/,\s*$/, '');
   return str + opens.reverse().join('');
 }
 function addToRecent(entries) {
