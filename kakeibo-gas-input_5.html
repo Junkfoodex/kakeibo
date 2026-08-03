@@ -726,6 +726,59 @@ function readCSVText(file) {
   });
 }
 
+// ===== Google Drive Picker =====
+const GOOGLE_API_KEY = AIzaSyACUoVTzF-p11tpirudJzqBjEJ3mxZBLmQ 'ここにAPIキーを貼り付け';
+const GOOGLE_CLIENT_ID = 958314442221-jqh28oakgll8goaih2r5cqmvd070k3im.apps.googleusercontent.com 'ここにクライアントIDを貼り付け';
+
+let accessToken = null;
+
+function gapiLoaded() {
+  gapi.load('picker', () => {});
+}
+
+function openDrivePicker() {
+  if (!accessToken) {
+    const client = google.accounts.oauth2.initTokenClient({
+      client_id: GOOGLE_CLIENT_ID,
+      scope: 'https://www.googleapis.com/auth/drive.readonly',
+      callback: (tokenResponse) => {
+        accessToken = tokenResponse.access_token;
+        createPicker();
+      }
+    });
+    client.requestAccessToken();
+  } else {
+    createPicker();
+  }
+}
+
+function createPicker() {
+  const view = new google.picker.View(google.picker.ViewId.DOCS_IMAGES);
+  const picker = new google.picker.PickerBuilder()
+    .setTitle('スクショを選択')
+    .addView(view)
+    .setOAuthToken(accessToken)
+    .setDeveloperKey(GOOGLE_API_KEY)
+    .setCallback(pickerCallback)
+    .build();
+  picker.setVisible(true);
+}
+
+async function pickerCallback(data) {
+  if (data.action === google.picker.Action.PICKED) {
+    const file = data.docs[0];
+    const response = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+    const blob = await response.blob();
+    photoFile = new File([blob], file.name, { type: file.mimeType });
+    document.getElementById('photoName').textContent = file.name;
+    document.getElementById('photoPreview').classList.add('show');
+    document.getElementById('photoAnalyzeBtn').classList.add('show');
+  }
+}
+  
 init();
 </script>
 </body>
