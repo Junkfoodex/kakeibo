@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>家計簿入力</title>
 
+<script src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
+<script src="https://accounts.google.com/gsi/client"></script>
+  
 <!-- iPhoneでホーム画面に追加した際にアプリらしく表示するための設定 -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -80,31 +83,7 @@ header p { font-size: 11px; color: var(--text-soft); margin-top: 6px; }
 }
 .security-note .icon { font-size: 16px; flex-shrink: 0; }
 
-/* GAS URL設定 */
-.setup-card {
-  background: var(--paper); color: var(--ink);
-  border-radius: 16px; padding: 18px;
-}
-.setup-card.connected { background: rgba(91,138,114,0.12); }
-.setup-header {
-  display: flex; align-items: center; gap: 8px;
-  margin-bottom: 10px;
-}
-.setup-header h3 {
-  font-family: 'Shippori Mincho', serif;
-  font-size: 13px; font-weight: 700;
-}
-.status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--vermillion); }
-.status-dot.ok { background: var(--celadon); }
-.setup-card p { font-size: 11px; color: var(--text-soft); margin-bottom: 10px; line-height: 1.6; }
-.setup-card input {
-  width: 100%; padding: 10px 12px;
-  border: 1px solid var(--line); border-radius: 8px;
-  font-size: 12px; font-family: 'DM Mono', monospace;
-  margin-bottom: 8px; outline: none;
-  background: white;
-}
-.setup-card input:focus { border-color: var(--gold); }
+
 .btn-connect {
   background: var(--gold); color: var(--ink);
   border: none; padding: 9px 16px; border-radius: 8px;
@@ -269,16 +248,7 @@ select.csv-bank {
     <span>確定した明細は、お使いのGoogleスプレッドシートに直接書き込まれます。データの保存先は自分のGoogleアカウント内のみです。写真・CSVを解析する際だけ、画像/テキストがAI解析のために送信されます。</span>
   </div>
 
-  <!-- GAS接続設定 -->
-  <div class="setup-card" id="setupCard">
-    <div class="setup-header">
-      <div class="status-dot" id="statusDot"></div>
-      <h3>スプレッドシートとの連携</h3>
-    </div>
-    <p id="setupDesc">Google Apps ScriptのWebアプリURLを設定すると、入力した明細が直接スプレッドシートに反映されます。</p>
-    <input type="text" id="gasUrl" placeholder="https://script.google.com/macros/s/.../exec">
-    <button class="btn-connect" onclick="saveGasUrl()">保存する</button>
-  </div>
+  
 
   <!-- 入力方法タブ -->
   <div>
@@ -318,6 +288,12 @@ select.csv-bank {
         <button onclick="clearPhoto()">✕</button>
       </div>
       <button class="btn-analyze" id="photoAnalyzeBtn" onclick="analyzePhoto()">🔍 読み取る</button>
+      <button class="btn-analyze show" onclick="openDrivePicker()" style="background:#5b8a72;margin-top:10px;">
+  📂 Googleドライブから選択
+        <button class="btn-analyze show" onclick="openDrivePicker()" style="background:#5b8a72;margin-top:10px;">
+  📂 Googleドライブから選択
+</button>
+</button>
       <div class="loading-inline" id="photoLoading"><div class="spinner-sm"></div>解析中...</div>
       <div class="error-msg" id="photoError"></div>
       <div class="review-list" id="photoReview"></div>
@@ -380,7 +356,7 @@ let manualType = 'expense';
 let photoFile = null, csvFile = null;
 let reviewData = { photo: [], csv: [] };
 let recentEntries = []; // セッション内の表示用のみ（保存先はスプレッドシート）
-let gasUrl = '';
+let gasUrl = 'https://script.google.com/macros/s/AKfycbx8wxKyeppwQhrRWPyHOStAmSbBlwBYemVYFFb_en1mezZTHlFkFhJ7sjTbF7BSUGE8/exec';
 
 function init() {
   document.getElementById('mDate').value = new Date().toISOString().slice(0,10);
