@@ -364,7 +364,7 @@ let gasUrl = 'https://script.google.com/macros/s/AKfycbx8wxKyeppwQhrRWPyHOStAmSb
 function init() {
   document.getElementById('mDate').value = new Date().toISOString().slice(0,10);
   updateCategoryOptions();
-  updateConnectionStatus();
+  
 }
 
 function updateCategoryOptions() {
@@ -384,31 +384,13 @@ function switchTab(btn) {
   document.getElementById('panel-' + btn.dataset.panel).classList.add('active');
 }
 
-function saveGasUrl() {
-  const val = document.getElementById('gasUrl').value.trim();
-  if (!val.startsWith('https://script.google.com/')) {
-    alert('正しいGoogle Apps Script WebアプリのURLを入力してください\n（https://script.google.com/macros/... の形式）');
-    return;
+
   }
   gasUrl = val;
-  updateConnectionStatus();
+  
 }
 
-function updateConnectionStatus() {
-  const dot = document.getElementById('statusDot');
-  const desc = document.getElementById('setupDesc');
-  const card = document.getElementById('setupCard');
-  const connected = !!gasUrl;
-  dot.classList.toggle('ok', connected);
-  card.classList.toggle('connected', connected);
-  desc.textContent = connected
-    ? '✅ 接続済みです。入力した明細はスプレッドシートに直接保存されます。'
-    : 'Google Apps ScriptのWebアプリURLを設定すると、入力した明細が直接スプレッドシートに反映されます。';
 
-  document.getElementById('manualSubmitBtn').disabled = !connected;
-  document.getElementById('photoConfirmBtn').disabled = !connected;
-  document.getElementById('csvConfirmBtn').disabled = !connected;
-}
 
 // ===== スプレッドシートへの送信 =====
 // GAS WebアプリはCORSヘッダーを返さずfetchでのPOST/no-corsが不安定なため、
