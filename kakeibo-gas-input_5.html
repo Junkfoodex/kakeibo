@@ -324,6 +324,9 @@ select.csv-bank {
         <button onclick="clearCSV()">✕</button>
       </div>
       <button class="btn-analyze" id="csvAnalyzeBtn" onclick="analyzeCSV()">🔍 読み取る</button>
+      <button class="btn-analyze show" onclick="openDrivePicker()" style="background:#5b8a72;margin-top:10px;">
+  📂 Googleドライブから選択
+</button>
       <div class="loading-inline" id="csvLoading"><div class="spinner-sm"></div>解析中...</div>
       <div class="error-msg" id="csvError"></div>
       <div class="review-list" id="csvReview"></div>
