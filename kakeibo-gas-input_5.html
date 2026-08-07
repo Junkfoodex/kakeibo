@@ -230,8 +230,12 @@ async function addManualEntry(){
 }
 function openDrivePicker(){
   if(!accessToken){
-    const client=google.accounts.oauth2.initTokenClient({client_id:GOOGLE_CLIENT_ID,scope:'https://www.googleapis.com/auth/drive.readonly',callback:(t)=>{accessToken=t.access_token;createPicker();}});
-    client.requestAccessToken();
+function createPicker(){
+  if(!pickerInited){alert('初期化中です。少し待ってから再試行してください。');return;}
+  const view=new google.picker.View(google.picker.ViewId.DOCS_IMAGES);
+  view.setParent('1B2mAntpJJV3sCKza08r_LZ4VqC2BwlxQ');
+  new google.picker.PickerBuilder().setTitle('家計簿スクショを選択').addView(view).setOAuthToken(accessToken).setDeveloperKey(GOOGLE_API_KEY).setCallback(pickerCallback).build().setVisible(true);
+}    client.requestAccessToken();
   }else{createPicker();}
 }
 function createPicker(){
