@@ -12,7 +12,7 @@
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='36' fill='%231c1b1f'/%3E%3Crect x='30' y='30' width='120' height='120' rx='16' fill='%23c8553d'/%3E%3Ctext x='90' y='112' font-family='serif' font-size='72' font-weight='700' fill='%23f7f3ea' text-anchor='middle'%3E記%3C/text%3E%3C/svg%3E">
 <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700&family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://apis.google.com/js/api.js"></script>
-<script src="https://accounts.google.com/gsi/client"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
 :root{--ink:#1c1b1f;--paper:#f7f3ea;--paper-dim:#ece6d8;--vermillion:#c8553d;--celadon:#5b8a72;--gold:#b8923f;--line:#d8cfb8;--text-soft:#6b6558}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -49,7 +49,7 @@ select.csv-bank{width:100%;background:var(--paper);color:var(--ink);border:none;
 .preview-row button{background:none;border:none;color:var(--vermillion);cursor:pointer;font-size:16px}
 .btn-analyze{width:100%;margin-top:10px;padding:13px;border:none;border-radius:10px;background:var(--gold);color:var(--ink);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;display:none}
 .btn-analyze.show{display:block}
-.btn-drive{width:100%;margin-top:0;padding:13px;border:none;border-radius:10px;background:var(--celadon);color:white;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer}
+.btn-drive{width:100%;padding:13px;border:none;border-radius:10px;background:var(--celadon);color:white;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer}
 .loading-inline{display:none;text-align:center;padding:16px;font-size:12px;color:var(--text-soft)}
 .loading-inline.show{display:block}
 .spinner-sm{width:22px;height:22px;border:2px solid var(--line);border-top-color:var(--gold);border-radius:50%;margin:0 auto 8px;animation:spin 0.7s linear infinite}
@@ -117,7 +117,7 @@ select.csv-bank{width:100%;background:var(--paper);color:var(--ink);border:none;
       <div class="error-msg" id="manualError"></div>
     </div>
     <div class="input-panel" id="panel-photo">
-      <button class="btn-drive" onclick="openDrivePicker()">📂 Googleドライブから選択</button>
+      <button class="btn-drive" onclick="openDrivePicker()">📂 家計簿スクショから選択</button>
       <div class="upload-zone" style="margin-top:10px;">
         <input type="file" id="photoInput" accept="image/*">
         <div class="icon">📷</div>
@@ -176,6 +176,7 @@ const CATEGORY_COLORS={'食費':'#c8553d','日用品':'#b8923f','交通費':'#5b
 const GAS_URL='https://script.google.com/macros/s/AKfycbx8wxKyeppwQhrRWPyHOStAmSbBlwBYemVYFFb_en1mezZTHlFkFhJ7sjTbF7BSUGE8/exec';
 const GOOGLE_API_KEY='AIzaSyACUoVTzF-p11tpirudJzqBjEJ3mxZBLmQ';
 const GOOGLE_CLIENT_ID='958314442221-jqh28oakgll8goaih2r5cqmvd070k3im.apps.googleusercontent.com';
+const DRIVE_FOLDER_ID='1B2mAntpJJV3sCKza08r_LZ4VqC2BwlxQ';
 let manualType='expense',photoFile=null,csvFile=null,reviewData={photo:[],csv:[]},recentEntries=[],accessToken=null,pickerInited=false;
 
 function init(){
@@ -229,19 +230,19 @@ async function addManualEntry(){
   btn.disabled=false;
 }
 function openDrivePicker(){
+  if(typeof google==='undefined'||!google.accounts){
+    alert('Googleライブラリの読み込み中です。少し待ってから再試行してください。');return;
+  }
   if(!accessToken){
-function createPicker(){
-  if(!pickerInited){alert('初期化中です。少し待ってから再試行してください。');return;}
-  const view=new google.picker.View(google.picker.ViewId.DOCS_IMAGES);
-  view.setParent('1B2mAntpJJV3sCKza08r_LZ4VqC2BwlxQ');
-  new google.picker.PickerBuilder().setTitle('家計簿スクショを選択').addView(view).setOAuthToken(accessToken).setDeveloperKey(GOOGLE_API_KEY).setCallback(pickerCallback).build().setVisible(true);
-}    client.requestAccessToken();
+    const client=google.accounts.oauth2.initTokenClient({client_id:GOOGLE_CLIENT_ID,scope:'https://www.googleapis.com/auth/drive.readonly',callback:(t)=>{accessToken=t.access_token;createPicker();}});
+    client.requestAccessToken();
   }else{createPicker();}
 }
 function createPicker(){
   if(!pickerInited){alert('初期化中です。少し待ってから再試行してください。');return;}
   const view=new google.picker.View(google.picker.ViewId.DOCS_IMAGES);
-  new google.picker.PickerBuilder().setTitle('スクショを選択').addView(view).setOAuthToken(accessToken).setDeveloperKey(GOOGLE_API_KEY).setCallback(pickerCallback).build().setVisible(true);
+  view.setParent(DRIVE_FOLDER_ID);
+  new google.picker.PickerBuilder().setTitle('家計簿スクショを選択').addView(view).setOAuthToken(accessToken).setDeveloperKey(GOOGLE_API_KEY).setCallback(pickerCallback).build().setVisible(true);
 }
 async function pickerCallback(data){
   if(data.action===google.picker.Action.PICKED){
