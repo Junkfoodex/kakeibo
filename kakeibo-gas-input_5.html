@@ -67,6 +67,8 @@ select.csv-bank{width:100%;background:var(--paper);color:var(--ink);border:none;
 .error-msg.show{display:block}
 .success-msg{display:none;background:rgba(91,138,114,0.15);border:1px solid rgba(91,138,114,0.3);border-radius:10px;padding:12px 14px;font-size:12px;color:#a8c9b5;margin-top:10px}
 .success-msg.show{display:block}
+.raw-text{display:none;background:rgba(255,255,255,0.04);border-radius:10px;padding:12px;font-size:11px;color:var(--text-soft);margin-top:10px;white-space:pre-wrap;max-height:200px;overflow-y:auto}
+.raw-text.show{display:block}
 .recent-list{display:flex;flex-direction:column;gap:1px}
 .recent-item{background:var(--paper);color:var(--ink);padding:12px 16px;display:flex;align-items:center;gap:12px}
 .recent-item:first-child{border-radius:14px 14px 0 0}
@@ -91,7 +93,7 @@ select.csv-bank{width:100%;background:var(--paper);color:var(--ink);border:none;
 <div class="main">
   <div class="security-note">
     <span>🔒</span>
-    <span>確定した明細は、お使いのGoogleスプレッドシートに直接書き込まれます。写真・CSVを解析する際だけ、画像/テキストがAI解析のために送信されます。</span>
+    <span>確定した明細は、お使いのGoogleスプレッドシートに直接書き込まれます。画像はGAS経由でGoogle Vision APIで解析されます。</span>
   </div>
   <div>
     <div class="input-tabs">
@@ -129,8 +131,9 @@ select.csv-bank{width:100%;background:var(--paper);color:var(--ink);border:none;
         <button onclick="clearPhoto()">✕</button>
       </div>
       <button class="btn-analyze" id="photoAnalyzeBtn" onclick="analyzePhoto()">🔍 読み取る</button>
-      <div class="loading-inline" id="photoLoading"><div class="spinner-sm"></div>解析中...</div>
+      <div class="loading-inline" id="photoLoading"><div class="spinner-sm"></div>GAS経由で解析中...</div>
       <div class="error-msg" id="photoError"></div>
+      <div class="raw-text" id="rawText"></div>
       <div class="review-list" id="photoReview"></div>
       <button class="btn-confirm-all" id="photoConfirmBtn" onclick="confirmReview('photo')">スプレッドシートに追加</button>
       <div class="success-msg" id="photoSuccess"></div>
@@ -211,6 +214,22 @@ function sendToSheet(entries){
     document.body.appendChild(s);
   });
 }
+function analyzeImageViaGAS(base64,mimeType){
+  return new Promise((resolve,reject)=>{
+    const cb='visionCallback_'+Date.now();
+    const timer=setTimeout(()=>{cleanup();reject(new Error('タイムアウト（30秒）'));},30000);
+    function cleanup(){clearTimeout(timer);delete window[cb];if(s.parentNode)s.parentNode.removeChild(s);}
+    window[cb]=function(data){
+      cleanup();
+      if(data&&data.success){resolve(data);}
+      else{reject(new Error((data&&data.message)||'解析失敗'));}
+    };
+    const s=document.createElement('script');
+    s.src=GAS_URL+'?'+new URLSearchParams({image:base64,mimeType:mimeType,callback:cb}).toString();
+    s.onerror=()=>{cleanup();reject(new Error('通信エラー'));};
+    document.body.appendChild(s);
+  });
+}
 async function addManualEntry(){
   const amount=Number(document.getElementById('mAmount').value);
   const desc=document.getElementById('mDesc').value.trim();
@@ -260,25 +279,33 @@ document.getElementById('photoInput').addEventListener('change',e=>{
 });
 function clearPhoto(){
   photoFile=null;document.getElementById('photoInput').value='';
-  ['photoPreview','photoAnalyzeBtn','photoReview','photoConfirmBtn'].forEach(id=>document.getElementById(id).classList.remove('show'));
+  ['photoPreview','photoAnalyzeBtn','photoReview','photoConfirmBtn','rawText'].forEach(id=>document.getElementById(id).classList.remove('show'));
 }
 async function analyzePhoto(){
   if(!photoFile)return;
   document.getElementById('photoAnalyzeBtn').disabled=true;
   document.getElementById('photoLoading').classList.add('show');
   document.getElementById('photoError').classList.remove('show');
+  document.getElementById('rawText').classList.remove('show');
   try{
     const base64=await fileToBase64(photoFile);
-    const mediaType=photoFile.type||'image/jpeg';
-    const prompt=`この画像はレシート・クレジットカード明細・銀行アプリのスクリーンショットです。全ての取引明細を読み取り、次のJSON形式のみで返してください（説明文不要）：{"entries":[{"date":"2026-06-15","description":"店名・内容","category":"食費/日用品/交通費/光熱費/通信費/医療費/住居費/保険/娯楽/教育/給与/ボーナス/副業/その他収入/その他のいずれか","type":"expense または income","amount":1500}]}日付が不明な場合は今日の日付(${new Date().toISOString().slice(0,10)})を使用。金額は数値のみ。`;
-    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:mediaType,data:base64}},{type:'text',text:prompt}]}]})});
-    const data=await res.json();
-    const text=data.content.map(i=>i.text||'').join('');
-    const parsed=JSON.parse(text.replace(/```json|```/g,'').trim());
-    reviewData.photo=parsed.entries||[];
+    const mimeType=photoFile.type||'image/jpeg';
+    const result=await analyzeImageViaGAS(base64,mimeType);
     document.getElementById('photoLoading').classList.remove('show');
-    if(!reviewData.photo.length){showError('photoError','明細を検出できませんでした。');}else{renderReview('photo');}
-  }catch(e){document.getElementById('photoLoading').classList.remove('show');showError('photoError','エラー: '+e.message);}
+    if(result.rawText){
+      document.getElementById('rawText').textContent='📝 読み取ったテキスト：\n'+result.rawText;
+      document.getElementById('rawText').classList.add('show');
+    }
+    if(!result.entries||!result.entries.length){
+      showError('photoError','明細を検出できませんでした。内容を確認して手動で入力してください。');
+    }else{
+      reviewData.photo=result.entries;
+      renderReview('photo');
+    }
+  }catch(e){
+    document.getElementById('photoLoading').classList.remove('show');
+    showError('photoError','エラー: '+e.message);
+  }
   document.getElementById('photoAnalyzeBtn').disabled=false;
 }
 document.getElementById('csvInput').addEventListener('change',e=>{
@@ -295,14 +322,9 @@ async function analyzeCSV(){
   document.getElementById('csvError').classList.remove('show');
   try{
     const text=await readCSVText(csvFile);
-    const bankName=document.getElementById('csvBank').value;
-    const prompt=`以下は${bankName}の取引明細CSVです。全取引を読み取り、次のJSON形式のみで返してください：{"entries":[{"date":"2026-06-15","description":"内容","category":"食費/日用品/交通費/光熱費/通信費/医療費/住居費/保険/娯楽/教育/給与/ボーナス/副業/その他収入/その他のいずれか","type":"expense または income","amount":1500}]}金額は正の数値のみ。CSV:\n${text.slice(0,8000)}`;
-    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:prompt}]})});
-    const data=await res.json();
-    const rawText=data.content.map(i=>i.text||'').join('');
-    const parsed=JSON.parse(rawText.replace(/```json|```/g,'').trim());
-    reviewData.csv=parsed.entries||[];
+    const result=await analyzeImageViaGAS(btoa(unescape(encodeURIComponent(text))),'text/csv');
     document.getElementById('csvLoading').classList.remove('show');
+    reviewData.csv=result.entries||[];
     if(!reviewData.csv.length){showError('csvError','取引データが見つかりませんでした。');}else{renderReview('csv');}
   }catch(e){document.getElementById('csvLoading').classList.remove('show');showError('csvError','エラー: '+e.message);}
   document.getElementById('csvAnalyzeBtn').disabled=false;
@@ -325,27 +347,3 @@ async function confirmReview(kind){
     reviewData[kind]=[];
     document.getElementById(kind+'Review').classList.remove('show');
     btn.classList.remove('show');
-    if(kind==='photo')clearPhoto();
-    if(kind==='csv')clearCSV();
-  }catch(e){showError(kind+'Error','エラー: '+e.message);}
-  btn.disabled=false;
-}
-function addToRecent(entries){
-  entries.forEach(e=>recentEntries.unshift(e));
-  recentEntries=recentEntries.slice(0,10);
-  renderRecent();
-}
-function renderRecent(){
-  if(!recentEntries.length)return;
-  document.getElementById('recentSection').style.display='block';
-  document.getElementById('recentList').innerHTML=recentEntries.map(e=>`<div class="recent-item"><div class="recent-dot" style="background:${CATEGORY_COLORS[e.category]||'#999'}"></div><div class="recent-info"><div class="recent-desc">${escapeHtml(e.description)}</div><div class="recent-meta">${e.date} ・ ${e.category}</div></div><div class="recent-amt ${e.type}">${e.type==='income'?'+':'-'}¥${Number(e.amount).toLocaleString()}</div></div>`).join('');
-}
-function showError(id,msg){const el=document.getElementById(id);el.textContent=msg;el.classList.add('show');}
-function escapeHtml(str){const d=document.createElement('div');d.textContent=str;return d.innerHTML;}
-function escapeAttr(str){return String(str).replace(/"/g,'&quot;');}
-function fileToBase64(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result.split(',')[1]);r.onerror=reject;r.readAsDataURL(file);});}
-function readCSVText(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=e=>resolve(e.target.result);r.onerror=reject;r.readAsText(file,'Shift_JIS');});}
-init();
-</script>
-</body>
-</html>
