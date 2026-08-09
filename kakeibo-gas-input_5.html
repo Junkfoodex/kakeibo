@@ -235,26 +235,40 @@ function sendToSheet(entries){
 
 function analyzeImageViaGAS(base64,mimeType){
   return new Promise(function(resolve,reject){
-    var cb='visionCallback_'+Date.now();
-    var timer=setTimeout(function(){
-      delete window[cb];
+    var globalTimer=setTimeout(function(){
       reject(new Error('タイムアウト（30秒）'));
     },30000);
-    window[cb]=function(data){
-      clearTimeout(timer);
-      delete window[cb];
-      if(data&&data.success){resolve(data);}
-      else{reject(new Error((data&&data.message)||'解析失敗'));}
-    };
+
+    // Step1: no-corsでPOST送信
     fetch(GAS_URL,{
       method:'POST',
       mode:'no-cors',
       headers:{'Content-Type':'text/plain'},
-      body:JSON.stringify({image:base64,mimeType:mimeType,callback:cb})
+      body:JSON.stringify({image:base64,mimeType:mimeType})
+    }).then(function(){
+      // Step2: 5秒待ってからGETで結果取得
+      setTimeout(function(){
+        var cb='visionCallback_'+Date.now();
+        var s=document.createElement('script');
+        window[cb]=function(data){
+          clearTimeout(globalTimer);
+          delete window[cb];
+          if(s.parentNode)s.parentNode.removeChild(s);
+          if(data&&data.success){resolve(data);}
+          else{reject(new Error((data&&data.message)||'解析失敗'));}
+        };
+        s.src=GAS_URL+'?getResult=latest&callback='+cb;
+        s.onerror=function(){
+          clearTimeout(globalTimer);
+          delete window[cb];
+          if(s.parentNode)s.parentNode.removeChild(s);
+          reject(new Error('結果取得エラー'));
+        };
+        document.body.appendChild(s);
+      },5000);
     }).catch(function(err){
-      clearTimeout(timer);
-      delete window[cb];
-      reject(new Error('通信エラー: '+err.message));
+      clearTimeout(globalTimer);
+      reject(new Error('送信エラー: '+err.message));
     });
   });
 }
