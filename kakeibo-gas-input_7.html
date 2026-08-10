@@ -11,12 +11,7 @@
 <meta name="theme-color" content="#1c1b1f">
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='36' fill='%231c1b1f'/%3E%3Crect x='30' y='30' width='120' height='120' rx='16' fill='%23c8553d'/%3E%3Ctext x='90' y='112' font-family='serif' font-size='72' font-weight='700' fill='%23f7f3ea' text-anchor='middle'%3E%E8%A8%98%3C/text%3E%3C/svg%3E">
 <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700&family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<script>
-function gapiLoaded(){
-  gapi.load('picker',function(){window.pickerInited=true;});
-}
-</script>
-  <script src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
+<script src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
 :root{--ink:#1c1b1f;--paper:#f7f3ea;--paper-dim:#ece6d8;--vermillion:#c8553d;--celadon:#5b8a72;--gold:#b8923f;--line:#d8cfb8;--text-soft:#6b6558}
@@ -316,7 +311,7 @@ async function addManualEntry(){
 
 function openDrivePicker(){
   if(typeof google==='undefined'||!google.accounts||!google.accounts.oauth2){
-    setTimeout(function(){openDrivePicker();},500);
+    alert('Googleライブラリがまだ読み込まれていません。数秒待ってから再度クリックしてください。');
     return;
   }
   if(!accessToken){
@@ -331,7 +326,7 @@ function openDrivePicker(){
 
 function createPicker(){
   if(!pickerInited){
-    setTimeout(function(){createPicker();},500);
+    alert('Pickerがまだ初期化されていません。数秒待ってから再度クリックしてください。');
     return;
   }
   var view=new google.picker.View(google.picker.ViewId.DOCS_IMAGES);
