@@ -180,10 +180,11 @@ var GAS_URL='https://script.google.com/macros/s/AKfycbywTGVhzC5jpptxHcUSjqMFkpz-
 var GOOGLE_API_KEY='AIzaSyACUoVTzF-p11tpirudJzqBjEJ3mxZBLmQ';
 var GOOGLE_CLIENT_ID='958314442221-jqh28oakgll8goaih2r5cqmvd070k3im.apps.googleusercontent.com';
 var DRIVE_FOLDER_ID='1B2mAntpJJV3sCKza08r_LZ4VqC2BwlxQ';
-var manualType='expense',photoFile=null,selectedFileId=null,csvFile=null,reviewData={photo:[],csv:[]},recentEntries=[],accessToken=null,pickerInited=false;
+var manualType='expense',photoFile=null,selectedFileId=null,csvFile=null,reviewData={photo:[],csv:[]},recentEntries=[],accessToken=null;
+window.pickerInited=false;
 
 function gapiLoaded(){
-  gapi.load('picker',function(){pickerInited=true;});
+  gapi.load('picker',function(){window.pickerInited=true;});
 }
 
 function init(){
@@ -325,7 +326,7 @@ function openDrivePicker(){
 }
 
 function createPicker(){
-  if(!pickerInited){
+  if(!window.pickerInited){
     alert('Pickerがまだ初期化されていません。数秒待ってから再度クリックしてください。');
     return;
   }
