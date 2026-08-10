@@ -11,7 +11,7 @@
 <meta name="theme-color" content="#1c1b1f">
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='36' fill='%231c1b1f'/%3E%3Crect x='30' y='30' width='120' height='120' rx='16' fill='%23c8553d'/%3E%3Ctext x='90' y='112' font-family='serif' font-size='72' font-weight='700' fill='%23f7f3ea' text-anchor='middle'%3E%E8%A8%98%3C/text%3E%3C/svg%3E">
 <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700&family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<script src="https://apis.google.com/js/api.js"></script>
+<script src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
 :root{--ink:#1c1b1f;--paper:#f7f3ea;--paper-dim:#ece6d8;--vermillion:#c8553d;--celadon:#5b8a72;--gold:#b8923f;--line:#d8cfb8;--text-soft:#6b6558}
@@ -176,14 +176,19 @@ select.csv-bank{width:100%;background:var(--paper);color:var(--ink);border:none;
 <script>
 var CATEGORIES={expense:['食費','日用品','交通費','光熱費','通信費','医療費','住居費','保険','娯楽','教育','その他'],income:['給与','ボーナス','副業','その他収入']};
 var CATEGORY_COLORS={'食費':'#c8553d','日用品':'#b8923f','交通費':'#5b8a72','光熱費':'#8a6fb0','通信費':'#4a8fb5','医療費':'#d4756b','住居費':'#7a6a52','保険':'#5f7a8a','娯楽':'#c98a3f','教育':'#5f8a6a','その他':'#8a8478','給与':'#5b8a72','ボーナス':'#4a8fb5','副業':'#b8923f','その他収入':'#8a8478'};
-var GAS_URL='https://script.google.com/macros/s/AKfycbywTGVhzC5jpptxHcUSjqMFkpz-1AMxTRxc2xzs3SDpy-Lqjdo7Y_X3UHmB53tDiaoW/exec';var GOOGLE_CLIENT_ID='958314442221-jqh28oakgll8goaih2r5cqmvd070k3im.apps.googleusercontent.com';
+var GAS_URL='https://script.google.com/macros/s/AKfycbywTGVhzC5jpptxHcUSjqMFkpz-1AMxTRxc2xzs3SDpy-Lqjdo7Y_X3UHmB53tDiaoW/exec';
+var GOOGLE_API_KEY='AIzaSyACUoVTzF-p11tpirudJzqBjEJ3mxZBLmQ';
+var GOOGLE_CLIENT_ID='958314442221-jqh28oakgll8goaih2r5cqmvd070k3im.apps.googleusercontent.com';
 var DRIVE_FOLDER_ID='1B2mAntpJJV3sCKza08r_LZ4VqC2BwlxQ';
 var manualType='expense',photoFile=null,selectedFileId=null,csvFile=null,reviewData={photo:[],csv:[]},recentEntries=[],accessToken=null,pickerInited=false;
+
+function gapiLoaded(){
+  gapi.load('picker',function(){pickerInited=true;});
+}
 
 function init(){
   document.getElementById('mDate').value=new Date().toISOString().slice(0,10);
   updateCategoryOptions();
-  gapi.load('picker',function(){pickerInited=true;});
 }
 
 function updateCategoryOptions(){
