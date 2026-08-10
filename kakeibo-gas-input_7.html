@@ -181,19 +181,23 @@ var GOOGLE_API_KEY='AIzaSyACUoVTzF-p11tpirudJzqBjEJ3mxZBLmQ';
 var GOOGLE_CLIENT_ID='958314442221-jqh28oakgll8goaih2r5cqmvd070k3im.apps.googleusercontent.com';
 var DRIVE_FOLDER_ID='1B2mAntpJJV3sCKza08r_LZ4VqC2BwlxQ';
 var manualType='expense',photoFile=null,selectedFileId=null,csvFile=null,reviewData={photo:[],csv:[]},recentEntries=[],accessToken=null;
-window.pickerInited=false;
+var pickerInited=false;
+var pickerLoadAttempts=0;
+
+function tryLoadPicker(){
+  if(pickerLoadAttempts>10)return;
+  pickerLoadAttempts++;
+  if(typeof gapi!=='undefined'&&gapi.load){
+    gapi.load('picker',function(){pickerInited=true;});
+  } else {
+    setTimeout(tryLoadPicker,1000);
+  }
+}
 
 function init(){
   document.getElementById('mDate').value=new Date().toISOString().slice(0,10);
   updateCategoryOptions();
-  function loadPicker(){
-    if(typeof gapi !== 'undefined'){
-      gapi.load('picker',function(){window.pickerInited=true;});
-    } else {
-      setTimeout(loadPicker, 500);
-    }
-  }
-  loadPicker();
+  setTimeout(tryLoadPicker,500);
 }
 
 function updateCategoryOptions(){
@@ -323,24 +327,24 @@ function openDrivePicker(){
     var client=google.accounts.oauth2.initTokenClient({
       client_id:GOOGLE_CLIENT_ID,
       scope:'https://www.googleapis.com/auth/drive.readonly',
-      callback:function(t){accessToken=t.access_token;createPicker();}
+      callback:function(t){accessToken=t.access_token;showPicker();}
     });
     client.requestAccessToken();
-  }else{createPicker();}
-}
-
-function createPicker(){
-  if(!window.pickerInited){
-    gapi.load('picker',function(){
-      window.pickerInited=true;
-      showPicker();
-    });
-    return;
-  }
-  showPicker();
+  }else{showPicker();}
 }
 
 function showPicker(){
+  if(!pickerInited){
+    gapi.load('picker',function(){
+      pickerInited=true;
+      buildAndShowPicker();
+    });
+    return;
+  }
+  buildAndShowPicker();
+}
+
+function buildAndShowPicker(){
   var view=new google.picker.View(google.picker.ViewId.DOCS_IMAGES);
   view.setParent(DRIVE_FOLDER_ID);
   new google.picker.PickerBuilder()
