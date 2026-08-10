@@ -327,9 +327,16 @@ function openDrivePicker(){
 
 function createPicker(){
   if(!window.pickerInited){
-    alert('Pickerがまだ初期化されていません。数秒待ってから再度クリックしてください。');
+    gapi.load('picker',function(){
+      window.pickerInited=true;
+      showPicker();
+    });
     return;
   }
+  showPicker();
+}
+
+function showPicker(){
   var view=new google.picker.View(google.picker.ViewId.DOCS_IMAGES);
   view.setParent(DRIVE_FOLDER_ID);
   new google.picker.PickerBuilder()
