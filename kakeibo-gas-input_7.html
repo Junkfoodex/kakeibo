@@ -290,6 +290,7 @@ function openDrivePicker(){
     alert('Googleライブラリがまだ読み込まれていません。数秒待ってから再度クリックしてください。');
     return;
   }
+  pickerCallbackDone=false;
   if(!accessToken){
     var client=google.accounts.oauth2.initTokenClient({
       client_id:GOOGLE_CLIENT_ID,
@@ -326,10 +327,14 @@ function buildAndShowPicker(){
   currentPicker.setVisible(true);
 }
 
+var pickerCallbackDone=false;
+
 function pickerCallback(data){
+  if(pickerCallbackDone)return;
   try{
     var action=data[google.picker.Response.ACTION];
     if(action===google.picker.Action.PICKED){
+      pickerCallbackDone=true;
       if(currentPicker){currentPicker.setVisible(false);currentPicker=null;}
       var f=data[google.picker.Response.DOCUMENTS][0];
       selectedFileId=f[google.picker.Document.ID];
