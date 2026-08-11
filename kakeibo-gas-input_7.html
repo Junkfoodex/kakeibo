@@ -396,6 +396,8 @@ async function analyzePhoto(){
   try{
     var result;
     if(selectedFileId){
+      showError('photoError','デバッグ: fileId='+selectedFileId.substring(0,20)+'... GASに送信中...');
+      document.getElementById('photoError').classList.add('show');
       result=await analyzeByFileId(selectedFileId);
     }else{
       var base64=await fileToBase64(photoFile);
