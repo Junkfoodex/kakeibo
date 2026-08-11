@@ -189,7 +189,7 @@ function tryLoadPicker(){
   pickerLoadAttempts++;
   if(typeof gapi!=='undefined'&&gapi.load){
     gapi.load('picker',function(){pickerInited=true;});
-  } else {
+  }else{
     setTimeout(tryLoadPicker,1000);
   }
 }
@@ -262,33 +262,6 @@ function analyzeByFileId(fileId){
       else{reject(new Error((data&&data.message)||'解析失敗'));}
     };
     s.src=GAS_URL+'?fileId='+encodeURIComponent(fileId)+'&callback='+cb;
-    s.onerror=function(){
-      clearTimeout(timer);
-      delete window[cb];
-      if(s.parentNode)s.parentNode.removeChild(s);
-      reject(new Error('通信エラー'));
-    };
-    document.body.appendChild(s);
-  });
-}
-
-function analyzeByBase64(base64,mimeType){
-  return new Promise(function(resolve,reject){
-    var cb='visionCallback_'+Date.now();
-    var s=document.createElement('script');
-    var timer=setTimeout(function(){
-      delete window[cb];
-      if(s.parentNode)s.parentNode.removeChild(s);
-      reject(new Error('タイムアウト（30秒）'));
-    },30000);
-    window[cb]=function(data){
-      clearTimeout(timer);
-      delete window[cb];
-      if(s.parentNode)s.parentNode.removeChild(s);
-      if(data&&data.success){resolve(data);}
-      else{reject(new Error((data&&data.message)||'解析失敗'));}
-    };
-    s.src=GAS_URL+'?image='+encodeURIComponent(base64)+'&mimeType='+encodeURIComponent(mimeType)+'&callback='+cb;
     s.onerror=function(){
       clearTimeout(timer);
       delete window[cb];
@@ -388,7 +361,10 @@ function clearPhoto(){
 }
 
 async function analyzePhoto(){
-  if(!photoFile&&!selectedFileId)return;
+  if(!photoFile&&!selectedFileId){
+    showError('photoError','ファイルが選択されていません');
+    return;
+  }
   document.getElementById('photoAnalyzeBtn').disabled=true;
   document.getElementById('photoLoading').classList.add('show');
   document.getElementById('photoError').classList.remove('show');
@@ -396,13 +372,13 @@ async function analyzePhoto(){
   try{
     var result;
     if(selectedFileId){
-      showError('photoError','デバッグ: fileId='+selectedFileId.substring(0,20)+'... GASに送信中...');
-      document.getElementById('photoError').classList.add('show');
       result=await analyzeByFileId(selectedFileId);
     }else{
-      var base64=await fileToBase64(photoFile);
-      var mimeType=photoFile.type||'image/jpeg';
-      result=await analyzeByBase64(base64,mimeType);
+      // 直接アップロードはfileIdなしのため、まずDriveにアップロードしてからfileIdで解析
+      showError('photoError','直接アップロードはドライブ経由のみ対応しています。「📂 家計簿スクショから選択」をご利用ください。');
+      document.getElementById('photoLoading').classList.remove('show');
+      document.getElementById('photoAnalyzeBtn').disabled=false;
+      return;
     }
     document.getElementById('photoLoading').classList.remove('show');
     if(result.rawText){
@@ -446,8 +422,31 @@ async function analyzeCSV(){
   document.getElementById('csvError').classList.remove('show');
   try{
     var text=await readCSVText(csvFile);
-    var base64=btoa(unescape(encodeURIComponent(text)));
-    var result=await analyzeByBase64(base64,'text/csv');
+    var cb='csvCallback_'+Date.now();
+    var result=await new Promise(function(resolve,reject){
+      var s=document.createElement('script');
+      var timer=setTimeout(function(){
+        delete window[cb];
+        if(s.parentNode)s.parentNode.removeChild(s);
+        reject(new Error('タイムアウト（30秒）'));
+      },30000);
+      window[cb]=function(data){
+        clearTimeout(timer);
+        delete window[cb];
+        if(s.parentNode)s.parentNode.removeChild(s);
+        if(data&&data.success){resolve(data);}
+        else{reject(new Error((data&&data.message)||'解析失敗'));}
+      };
+      var base64=btoa(unescape(encodeURIComponent(text)));
+      s.src=GAS_URL+'?csv='+encodeURIComponent(base64)+'&callback='+cb;
+      s.onerror=function(){
+        clearTimeout(timer);
+        delete window[cb];
+        if(s.parentNode)s.parentNode.removeChild(s);
+        reject(new Error('通信エラー'));
+      };
+      document.body.appendChild(s);
+    });
     document.getElementById('csvLoading').classList.remove('show');
     reviewData.csv=result.entries||[];
     if(!reviewData.csv.length){showError('csvError','取引データが見つかりませんでした。');}
