@@ -182,22 +182,16 @@ var GOOGLE_CLIENT_ID='958314442221-jqh28oakgll8goaih2r5cqmvd070k3im.apps.googleu
 var DRIVE_FOLDER_ID='1B2mAntpJJV3sCKza08r_LZ4VqC2BwlxQ';
 var manualType='expense',photoFile=null,selectedFileId=null,csvFile=null,reviewData={photo:[],csv:[]},recentEntries=[],accessToken=null;
 var pickerInited=false;
-var pickerLoadAttempts=0;
-
-function tryLoadPicker(){
-  if(pickerLoadAttempts>10)return;
-  pickerLoadAttempts++;
+var pickerTimer=setInterval(function(){
   if(typeof gapi!=='undefined'&&gapi.load){
+    clearInterval(pickerTimer);
     gapi.load('picker',function(){pickerInited=true;});
-  }else{
-    setTimeout(tryLoadPicker,1000);
   }
-}
+},500);
 
 function init(){
   document.getElementById('mDate').value=new Date().toISOString().slice(0,10);
   updateCategoryOptions();
-  setTimeout(tryLoadPicker,500);
 }
 
 function updateCategoryOptions(){
