@@ -331,13 +331,17 @@ function buildAndShowPicker(){
 }
 
 function pickerCallback(data){
-  if(data.action===google.picker.Action.PICKED){
-    var f=data.docs[0];
-    selectedFileId=f.id;
-    photoFile=null;
-    document.getElementById('photoName').textContent=f.name;
-    document.getElementById('photoPreview').classList.add('show');
-    document.getElementById('photoAnalyzeBtn').classList.add('show');
+  try{
+    if(data[google.picker.Response.ACTION]===google.picker.Action.PICKED){
+      var f=data[google.picker.Response.DOCUMENTS][0];
+      selectedFileId=f[google.picker.Document.ID];
+      photoFile=null;
+      document.getElementById('photoName').textContent=f[google.picker.Document.NAME];
+      document.getElementById('photoPreview').classList.add('show');
+      document.getElementById('photoAnalyzeBtn').classList.add('show');
+    }
+  }catch(err){
+    showError('photoError','Picker エラー: '+err.message);
   }
 }
 
