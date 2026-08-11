@@ -311,28 +311,34 @@ function showPicker(){
   buildAndShowPicker();
 }
 
+var currentPicker=null;
+
 function buildAndShowPicker(){
   var view=new google.picker.View(google.picker.ViewId.DOCS_IMAGES);
   view.setParent(DRIVE_FOLDER_ID);
-  new google.picker.PickerBuilder()
+  currentPicker=new google.picker.PickerBuilder()
     .setTitle('家計簿スクショを選択')
     .addView(view)
     .setOAuthToken(accessToken)
     .setDeveloperKey(GOOGLE_API_KEY)
     .setCallback(pickerCallback)
-    .build()
-    .setVisible(true);
+    .build();
+  currentPicker.setVisible(true);
 }
 
 function pickerCallback(data){
   try{
-    if(data[google.picker.Response.ACTION]===google.picker.Action.PICKED){
+    var action=data[google.picker.Response.ACTION];
+    if(action===google.picker.Action.PICKED){
+      if(currentPicker){currentPicker.setVisible(false);currentPicker=null;}
       var f=data[google.picker.Response.DOCUMENTS][0];
       selectedFileId=f[google.picker.Document.ID];
       photoFile=null;
       document.getElementById('photoName').textContent=f[google.picker.Document.NAME];
       document.getElementById('photoPreview').classList.add('show');
       document.getElementById('photoAnalyzeBtn').classList.add('show');
+    } else if(action===google.picker.Action.CANCEL){
+      if(currentPicker){currentPicker.setVisible(false);currentPicker=null;}
     }
   }catch(err){
     showError('photoError','Picker エラー: '+err.message);
