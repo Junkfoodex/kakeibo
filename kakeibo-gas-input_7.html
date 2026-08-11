@@ -114,6 +114,9 @@ select.csv-bank{width:100%;background:var(--paper);color:var(--ink);border:none;
         <div class="form-field"><label>内容</label><input type="text" id="mDesc" placeholder="例：スーパー、給料など"></div>
         <div class="form-field"><label>カテゴリ</label><select id="mCategory"></select></div>
       </div>
+      <div class="form-row">
+        <div class="form-field" style="grid-column:1 / span 2"><label>支払い方法</label><select id="mPaymentMethod"></select></div>
+      </div>
       <button class="btn-submit" onclick="addManualEntry()">スプレッドシートに追加</button>
       <div class="success-msg" id="manualSuccess"></div>
       <div class="error-msg" id="manualError"></div>
@@ -176,6 +179,8 @@ select.csv-bank{width:100%;background:var(--paper);color:var(--ink);border:none;
 <script>
 var CATEGORIES={expense:['食費','日用品','交通費','光熱費','通信費','医療費','住居費','保険','娯楽','教育','その他'],income:['給与','ボーナス','副業','その他収入']};
 var CATEGORY_COLORS={'食費':'#c8553d','日用品':'#b8923f','交通費':'#5b8a72','光熱費':'#8a6fb0','通信費':'#4a8fb5','医療費':'#d4756b','住居費':'#7a6a52','保険':'#5f7a8a','娯楽':'#c98a3f','教育':'#5f8a6a','その他':'#8a8478','給与':'#5b8a72','ボーナス':'#4a8fb5','副業':'#b8923f','その他収入':'#8a8478'};
+var PAYMENT_METHODS=['銀行振込','口座引き落とし','現金','楽天カード','三井住友カード','エポスカード','viewカード','PayPayカード','その他'];
+var CARD_METHODS=['楽天カード','三井住友カード','エポスカード','viewカード','PayPayカード'];
 var GAS_URL='https://script.google.com/macros/s/AKfycbywTGVhzC5jpptxHcUSjqMFkpz-1AMxTRxc2xzs3SDpy-Lqjdo7Y_X3UHmB53tDiaoW/exec';
 var GOOGLE_API_KEY='AIzaSyACUoVTzF-p11tpirudJzqBjEJ3mxZBLmQ';
 var GOOGLE_CLIENT_ID='958314442221-jqh28oakgll8goaih2r5cqmvd070k3im.apps.googleusercontent.com';
@@ -192,10 +197,15 @@ var pickerTimer=setInterval(function(){
 function init(){
   document.getElementById('mDate').value=new Date().toISOString().slice(0,10);
   updateCategoryOptions();
+  populatePaymentMethods();
 }
 
 function updateCategoryOptions(){
   document.getElementById('mCategory').innerHTML=CATEGORIES[manualType].map(function(c){return '<option>'+c+'</option>';}).join('');
+}
+
+function populatePaymentMethods(){
+  document.getElementById('mPaymentMethod').innerHTML=PAYMENT_METHODS.map(function(m){return '<option>'+m+'</option>';}).join('');
 }
 
 function setManualType(type){
@@ -270,7 +280,9 @@ async function addManualEntry(){
   var amount=Number(document.getElementById('mAmount').value);
   var desc=document.getElementById('mDesc').value.trim();
   if(!amount||!desc){alert('内容と金額を入力してください');return;}
-  var entry={date:document.getElementById('mDate').value,description:desc,category:document.getElementById('mCategory').value,type:manualType,amount:amount};
+  var paymentMethod=document.getElementById('mPaymentMethod').value;
+  var source=CARD_METHODS.indexOf(paymentMethod)!==-1?'card':'bank';
+  var entry={date:document.getElementById('mDate').value,description:desc,category:document.getElementById('mCategory').value,type:manualType,amount:amount,source:source,memo:paymentMethod};
   var btn=document.querySelector('.btn-submit');
   var ok=document.getElementById('manualSuccess');
   var err=document.getElementById('manualError');
@@ -477,6 +489,10 @@ function renderReview(kind){
         allCats.map(function(c){return '<option'+(e.category===c?' selected':'')+'>'+c+'</option>';}).join('')+
       '</select>'+
       '<input type="number" class="amt-input" value="'+e.amount+'" onchange="reviewData[\''+kind+'\']['+i+'].amount=Number(this.value)">'+
+      '<select onchange="reviewData[\''+kind+'\']['+i+'].source=this.value">'+
+        '<option value="bank"'+(e.source!=='card'?' selected':'')+'>銀行</option>'+
+        '<option value="card"'+(e.source==='card'?' selected':'')+'>カード</option>'+
+      '</select>'+
       '<button class="remove-btn" onclick="removeReviewItem(\''+kind+'\','+i+')">✕</button>'+
     '</div>';
   }).join('');
@@ -521,7 +537,7 @@ function renderRecent(){
       '<div class="recent-dot" style="background:'+(CATEGORY_COLORS[e.category]||'#999')+'"></div>'+
       '<div class="recent-info">'+
         '<div class="recent-desc">'+escapeHtml(e.description)+'</div>'+
-        '<div class="recent-meta">'+e.date+' ・ '+e.category+'</div>'+
+        '<div class="recent-meta">'+e.date+' ・ '+e.category+(e.source==='card'?' ・ 💳カード':' ・ 🏦銀行')+'</div>'+
       '</div>'+
       '<div class="recent-amt '+e.type+'">'+(e.type==='income'?'+':'-')+'¥'+Number(e.amount).toLocaleString()+'</div>'+
     '</div>';
