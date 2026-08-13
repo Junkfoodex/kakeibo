@@ -138,7 +138,8 @@ select.csv-bank{width:100%;background:var(--paper);color:var(--ink);border:none;
         <span>📎</span><span class="name" id="photoName"></span>
         <button onclick="clearPhoto()">✕</button>
       </div>
-      <button class="btn-analyze" id="photoAnalyzeBtn" onclick="analyzePhoto()">🔍 読み取る</button>
+      <div id="photoFileList" style="display:flex;flex-direction:column;gap:8px;margin-top:10px"></div>
+      <button class="btn-analyze" id="photoAnalyzeBtn" onclick="analyzePhoto()">🔍 読み取る（複数選択時は一括解析）</button>
       <div class="loading-inline" id="photoLoading"><div class="spinner-sm"></div>GAS経由で解析中...</div>
       <div class="error-msg" id="photoError"></div>
       <div class="raw-text" id="rawText"></div>
@@ -196,8 +197,8 @@ var GAS_URL='https://script.google.com/macros/s/AKfycbywTGVhzC5jpptxHcUSjqMFkpz-
 var GOOGLE_API_KEY='AIzaSyACUoVTzF-p11tpirudJzqBjEJ3mxZBLmQ';
 var GOOGLE_CLIENT_ID='958314442221-jqh28oakgll8goaih2r5cqmvd070k3im.apps.googleusercontent.com';
 var DRIVE_FOLDER_ID='1B2mAntpJJV3sCKza08r_LZ4VqC2BwlxQ';
-var manualType='expense',photoFile=null,selectedFileId=null,csvFile=null,reviewData={photo:[],csv:[]},recentEntries=[],accessToken=null;
-var securitiesData=[],idecoData=null,currentSheetName=null;
+var manualType='expense',photoFile=null,selectedFiles=[],csvFile=null,reviewData={photo:[],csv:[]},recentEntries=[],accessToken=null;
+var securitiesData=[],idecoDataList=[],currentSheetName=null;
 var pickerInited=false;
 var pickerTimer=setInterval(function(){
   if(typeof gapi!=='undefined'&&gapi.load){
@@ -326,8 +327,8 @@ function analyzeByFileId(fileId){
     var timer=setTimeout(function(){
       delete window[cb];
       if(s.parentNode)s.parentNode.removeChild(s);
-      reject(new Error('タイムアウト（60秒）。画像が大きい、またはGemini側が混雑している可能性があります。もう一度試してください。'));
-    },60000);
+      reject(new Error('タイムアウト（90秒）。画像が大きい、複数枚同時解析中、またはGemini側が混雑している可能性があります。もう一度試してください。'));
+    },90000);
     window[cb]=function(data){
       clearTimeout(timer);
       delete window[cb];
@@ -400,10 +401,11 @@ function buildAndShowPicker(){
   var view=new google.picker.View(google.picker.ViewId.DOCS_IMAGES);
   view.setParent(DRIVE_FOLDER_ID);
   currentPicker=new google.picker.PickerBuilder()
-    .setTitle('家計簿スクショを選択')
+    .setTitle('家計簿スクショを選択（複数選択可）')
     .addView(view)
     .setOAuthToken(accessToken)
     .setDeveloperKey(GOOGLE_API_KEY)
+    .enableFeature(google.picker.Feature.MULTISELECT_ENABLED)
     .setCallback(pickerCallback)
     .build();
   currentPicker.setVisible(true);
@@ -418,12 +420,16 @@ function pickerCallback(data){
     if(action===google.picker.Action.PICKED){
       pickerCallbackDone=true;
       if(currentPicker){currentPicker.setVisible(false);currentPicker=null;}
-      var f=data[google.picker.Response.DOCUMENTS][0];
-      selectedFileId=f[google.picker.Document.ID];
+      var docs=data[google.picker.Response.DOCUMENTS]||[];
+      docs.forEach(function(f){
+        var id=f[google.picker.Document.ID];
+        if(!selectedFiles.some(function(sf){return sf.id===id;})){
+          selectedFiles.push({id:id,name:f[google.picker.Document.NAME]});
+        }
+      });
       photoFile=null;
-      document.getElementById('photoName').textContent=f[google.picker.Document.NAME];
-      document.getElementById('photoPreview').classList.add('show');
-      document.getElementById('photoAnalyzeBtn').classList.add('show');
+      document.getElementById('photoInput').value='';
+      renderSelectedFiles();
     } else if(action===google.picker.Action.CANCEL){
       if(currentPicker){currentPicker.setVisible(false);currentPicker=null;}
     }
@@ -432,10 +438,30 @@ function pickerCallback(data){
   }
 }
 
+function renderSelectedFiles(){
+  var box=document.getElementById('photoFileList');
+  if(!selectedFiles.length){
+    box.innerHTML='';
+    if(!photoFile)document.getElementById('photoAnalyzeBtn').classList.remove('show');
+    return;
+  }
+  box.innerHTML=selectedFiles.map(function(f,i){
+    return '<div class="preview-row show"><span>📎</span><span class="name">'+escapeHtml(f.name)+'</span>'+
+      '<button onclick="removeSelectedFile('+i+')">✕</button></div>';
+  }).join('');
+  document.getElementById('photoAnalyzeBtn').classList.add('show');
+}
+
+function removeSelectedFile(idx){
+  selectedFiles.splice(idx,1);
+  renderSelectedFiles();
+}
+
 document.getElementById('photoInput').addEventListener('change',function(e){
   if(e.target.files[0]){
     photoFile=e.target.files[0];
-    selectedFileId=null;
+    selectedFiles=[];
+    document.getElementById('photoFileList').innerHTML='';
     document.getElementById('photoName').textContent=photoFile.name;
     document.getElementById('photoPreview').classList.add('show');
     document.getElementById('photoAnalyzeBtn').classList.add('show');
@@ -444,63 +470,79 @@ document.getElementById('photoInput').addEventListener('change',function(e){
 
 function clearPhoto(){
   photoFile=null;
-  selectedFileId=null;
+  selectedFiles=[];
   document.getElementById('photoInput').value='';
+  document.getElementById('photoFileList').innerHTML='';
   ['photoPreview','photoAnalyzeBtn','photoReview','photoConfirmBtn','rawText','photoSecuritiesReview','photoSecuritiesConfirmBtn','photoIdecoReview','photoIdecoConfirmBtn'].forEach(function(id){
     document.getElementById(id).classList.remove('show');
   });
 }
 
 async function analyzePhoto(){
-  if(!photoFile&&!selectedFileId){
+  if(!photoFile&&!selectedFiles.length){
     showError('photoError','ファイルが選択されていません');
     return;
   }
+  if(!selectedFiles.length&&photoFile){
+    // 直接アップロードはfileIdなしのため、まずDriveにアップロードしてからfileIdで解析
+    showError('photoError','直接アップロードはドライブ経由のみ対応しています。「📂 家計簿スクショから選択」をご利用ください（複数選択も可能です）。');
+    return;
+  }
   document.getElementById('photoAnalyzeBtn').disabled=true;
-  document.getElementById('photoLoading').classList.add('show');
   document.getElementById('photoError').classList.remove('show');
   document.getElementById('rawText').classList.remove('show');
-  try{
-    var result;
-    if(selectedFileId){
-      result=await analyzeByFileId(selectedFileId);
-    }else{
-      // 直接アップロードはfileIdなしのため、まずDriveにアップロードしてからfileIdで解析
-      showError('photoError','直接アップロードはドライブ経由のみ対応しています。「📂 家計簿スクショから選択」をご利用ください。');
-      document.getElementById('photoLoading').classList.remove('show');
-      document.getElementById('photoAnalyzeBtn').disabled=false;
-      return;
-    }
-    document.getElementById('photoLoading').classList.remove('show');
-    if(result.rawText){
-      document.getElementById('rawText').textContent='読み取ったテキスト:\n'+result.rawText;
-      document.getElementById('rawText').classList.add('show');
-    }
-    var type=result.type||'transactions';
-    if(type==='securities'){
-      if(!result.holdings||!result.holdings.length){
-        showError('photoError','証券銘柄を検出できませんでした。');
+  var total=selectedFiles.length;
+  var loadingEl=document.getElementById('photoLoading');
+  var completed=0;
+  loadingEl.classList.add('show');
+  loadingEl.innerHTML='<div class="spinner-sm"></div>GAS経由で解析中... (0/'+total+'件)';
+
+  var settled=await Promise.allSettled(selectedFiles.map(function(f){
+    return analyzeByFileId(f.id).then(function(r){
+      completed++;
+      loadingEl.innerHTML='<div class="spinner-sm"></div>GAS経由で解析中... ('+completed+'/'+total+'件)';
+      return {file:f,result:r};
+    },function(e){
+      completed++;
+      loadingEl.innerHTML='<div class="spinner-sm"></div>GAS経由で解析中... ('+completed+'/'+total+'件)';
+      throw e;
+    });
+  }));
+
+  loadingEl.classList.remove('show');
+
+  var allEntries=[],allHoldings=[],allIdecoList=[],rawTexts=[],errors=[];
+  settled.forEach(function(r,i){
+    if(r.status==='fulfilled'){
+      var data=r.value.result;
+      var name=r.value.file.name;
+      if(data.rawText)rawTexts.push('['+name+']\n'+data.rawText);
+      var type=data.type||'transactions';
+      if(type==='securities'){
+        if(data.holdings&&data.holdings.length)allHoldings=allHoldings.concat(data.holdings);
+        else errors.push(name+': 証券銘柄を検出できませんでした。');
+      }else if(type==='ideco'){
+        allIdecoList.push(data.ideco||{balance:0,contribution:0});
+      }else if(type==='unknown'){
+        errors.push(name+': 画面の種類を判定できませんでした。');
       }else{
-        securitiesData=result.holdings;
-        renderSecuritiesReview();
+        if(data.entries&&data.entries.length)allEntries=allEntries.concat(data.entries);
+        else errors.push(name+': 明細を検出できませんでした。');
       }
-    }else if(type==='ideco'){
-      idecoData=result.ideco||{balance:0,contribution:0};
-      renderIdecoReview();
-    }else if(type==='unknown'){
-      showError('photoError','画面の種類を判定できませんでした。手動で入力してください。');
     }else{
-      if(!result.entries||!result.entries.length){
-        showError('photoError','明細を検出できませんでした。手動で入力してください。');
-      }else{
-        reviewData.photo=result.entries;
-        renderReview('photo');
-      }
+      errors.push(selectedFiles[i].name+': エラー ('+((r.reason&&r.reason.message)||'解析失敗')+')');
     }
-  }catch(e){
-    document.getElementById('photoLoading').classList.remove('show');
-    showError('photoError','エラー: '+e.message);
+  });
+
+  if(rawTexts.length){
+    document.getElementById('rawText').textContent='読み取ったテキスト:\n\n'+rawTexts.join('\n\n---\n\n');
+    document.getElementById('rawText').classList.add('show');
   }
+  if(errors.length)showError('photoError',errors.join('\n'));
+  if(allEntries.length){reviewData.photo=allEntries;renderReview('photo');}
+  if(allHoldings.length){securitiesData=allHoldings;renderSecuritiesReview();}
+  if(allIdecoList.length){idecoDataList=allIdecoList;renderIdecoReview();}
+
   document.getElementById('photoAnalyzeBtn').disabled=false;
 }
 
@@ -646,11 +688,12 @@ async function confirmSecurities(){
 }
 
 function renderIdecoReview(){
-  document.getElementById('photoIdecoReview').innerHTML=
-    '<div class="review-item" style="flex-direction:column;align-items:stretch">'+
-      '<div class="ideco-field"><label>資産残高（円）</label><input type="number" id="idecoBalance" value="'+(idecoData.balance||0)+'" onchange="idecoData.balance=Number(this.value)"></div>'+
-      '<div class="ideco-field"><label>掛金（円・任意）</label><input type="number" id="idecoContribution" value="'+(idecoData.contribution||0)+'" onchange="idecoData.contribution=Number(this.value)"></div>'+
+  document.getElementById('photoIdecoReview').innerHTML=idecoDataList.map(function(d,i){
+    return '<div class="review-item" style="flex-direction:column;align-items:stretch">'+
+      '<div class="ideco-field"><label>資産残高（円）'+(idecoDataList.length>1?' #'+(i+1):'')+'</label><input type="number" value="'+(d.balance||0)+'" onchange="idecoDataList['+i+'].balance=Number(this.value)"></div>'+
+      '<div class="ideco-field"><label>掛金（円・任意）</label><input type="number" value="'+(d.contribution||0)+'" onchange="idecoDataList['+i+'].contribution=Number(this.value)"></div>'+
     '</div>';
+  }).join('');
   document.getElementById('photoIdecoReview').classList.add('show');
   document.getElementById('photoIdecoConfirmBtn').classList.add('show');
 }
@@ -660,10 +703,12 @@ async function confirmIdeco(){
   var ok=document.getElementById('photoIdecoSuccess');
   btn.disabled=true;
   try{
-    await sendIdecoToSheet(idecoData);
-    ok.textContent='✅ iDeCo残高を保存しました（¥'+Number(idecoData.balance||0).toLocaleString()+'）';
+    for(var i=0;i<idecoDataList.length;i++){
+      await sendIdecoToSheet(idecoDataList[i]);
+    }
+    ok.textContent='✅ iDeCo残高を'+idecoDataList.length+'件保存しました';
     ok.classList.add('show');
-    idecoData=null;
+    idecoDataList=[];
     document.getElementById('photoIdecoReview').classList.remove('show');
     btn.classList.remove('show');
     clearPhoto();
