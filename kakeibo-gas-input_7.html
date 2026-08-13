@@ -61,6 +61,11 @@ select.csv-bank{width:100%;background:var(--paper);color:var(--ink);border:none;
 .review-item .desc-input{flex:1;min-width:90px}
 .review-item .amt-input{width:75px;font-family:'DM Mono',monospace}
 .review-item .remove-btn{background:none;border:none;color:var(--vermillion);cursor:pointer;font-size:15px}
+.review-item .sec-input{width:90px;font-family:'DM Mono',monospace}
+.review-item .sec-input.name{width:120px;font-family:inherit}
+.ideco-field{margin-bottom:8px}
+.ideco-field label{display:block;font-size:10px;color:var(--text-soft);margin-bottom:4px}
+.ideco-field input{width:100%;background:var(--paper-dim);border:none;border-radius:6px;padding:8px 10px;font-family:'DM Mono',monospace;font-size:13px;color:var(--ink)}
 .btn-confirm-all{width:100%;margin-top:10px;padding:12px;border:none;border-radius:10px;background:var(--celadon);color:white;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;display:none}
 .btn-confirm-all.show{display:block}
 .error-msg{display:none;background:rgba(200,85,61,0.12);border:1px solid rgba(200,85,61,0.3);border-radius:10px;padding:12px 14px;font-size:12px;color:#e8a394;margin-top:10px}
@@ -140,6 +145,12 @@ select.csv-bank{width:100%;background:var(--paper);color:var(--ink);border:none;
       <div class="review-list" id="photoReview"></div>
       <button class="btn-confirm-all" id="photoConfirmBtn" onclick="confirmReview('photo')">スプレッドシートに追加</button>
       <div class="success-msg" id="photoSuccess"></div>
+      <div class="review-list" id="photoSecuritiesReview"></div>
+      <button class="btn-confirm-all" id="photoSecuritiesConfirmBtn" onclick="confirmSecurities()">証券データを保存</button>
+      <div class="success-msg" id="photoSecuritiesSuccess"></div>
+      <div class="review-list" id="photoIdecoReview"></div>
+      <button class="btn-confirm-all" id="photoIdecoConfirmBtn" onclick="confirmIdeco()">iDeCo残高を保存</button>
+      <div class="success-msg" id="photoIdecoSuccess"></div>
     </div>
     <div class="input-panel" id="panel-csv">
       <select class="csv-bank" id="csvBank">
@@ -186,6 +197,7 @@ var GOOGLE_API_KEY='AIzaSyACUoVTzF-p11tpirudJzqBjEJ3mxZBLmQ';
 var GOOGLE_CLIENT_ID='958314442221-jqh28oakgll8goaih2r5cqmvd070k3im.apps.googleusercontent.com';
 var DRIVE_FOLDER_ID='1B2mAntpJJV3sCKza08r_LZ4VqC2BwlxQ';
 var manualType='expense',photoFile=null,selectedFileId=null,csvFile=null,reviewData={photo:[],csv:[]},recentEntries=[],accessToken=null;
+var securitiesData=[],idecoData=null,currentSheetName=null;
 var pickerInited=false;
 var pickerTimer=setInterval(function(){
   if(typeof gapi!=='undefined'&&gapi.load){
@@ -239,6 +251,64 @@ function sendToSheet(entries){
       else{reject(new Error((data&&data.message)||'保存失敗'));}
     };
     s.src=GAS_URL+'?entries='+encodeURIComponent(JSON.stringify(entries))+'&callback='+cb;
+    s.onerror=function(){
+      clearTimeout(timer);
+      delete window[cb];
+      if(s.parentNode)s.parentNode.removeChild(s);
+      reject(new Error('通信エラー'));
+    };
+    document.body.appendChild(s);
+  });
+}
+
+function sendHoldingsToSheet(holdings){
+  return new Promise(function(resolve,reject){
+    var cb='holdingsCallback_'+Date.now();
+    var s=document.createElement('script');
+    var timer=setTimeout(function(){
+      delete window[cb];
+      if(s.parentNode)s.parentNode.removeChild(s);
+      reject(new Error('タイムアウト'));
+    },15000);
+    window[cb]=function(data){
+      clearTimeout(timer);
+      delete window[cb];
+      if(s.parentNode)s.parentNode.removeChild(s);
+      if(data&&data.success){resolve(data);}
+      else{reject(new Error((data&&data.message)||'保存失敗'));}
+    };
+    var url=GAS_URL+'?holdings='+encodeURIComponent(JSON.stringify(holdings))+'&callback='+cb;
+    if(currentSheetName)url+='&sheetName='+encodeURIComponent(currentSheetName);
+    s.src=url;
+    s.onerror=function(){
+      clearTimeout(timer);
+      delete window[cb];
+      if(s.parentNode)s.parentNode.removeChild(s);
+      reject(new Error('通信エラー'));
+    };
+    document.body.appendChild(s);
+  });
+}
+
+function sendIdecoToSheet(ideco){
+  return new Promise(function(resolve,reject){
+    var cb='idecoCallback_'+Date.now();
+    var s=document.createElement('script');
+    var timer=setTimeout(function(){
+      delete window[cb];
+      if(s.parentNode)s.parentNode.removeChild(s);
+      reject(new Error('タイムアウト'));
+    },15000);
+    window[cb]=function(data){
+      clearTimeout(timer);
+      delete window[cb];
+      if(s.parentNode)s.parentNode.removeChild(s);
+      if(data&&data.success){resolve(data);}
+      else{reject(new Error((data&&data.message)||'保存失敗'));}
+    };
+    var url=GAS_URL+'?ideco='+encodeURIComponent(JSON.stringify(ideco))+'&callback='+cb;
+    if(currentSheetName)url+='&sheetName='+encodeURIComponent(currentSheetName);
+    s.src=url;
     s.onerror=function(){
       clearTimeout(timer);
       delete window[cb];
@@ -376,7 +446,7 @@ function clearPhoto(){
   photoFile=null;
   selectedFileId=null;
   document.getElementById('photoInput').value='';
-  ['photoPreview','photoAnalyzeBtn','photoReview','photoConfirmBtn','rawText'].forEach(function(id){
+  ['photoPreview','photoAnalyzeBtn','photoReview','photoConfirmBtn','rawText','photoSecuritiesReview','photoSecuritiesConfirmBtn','photoIdecoReview','photoIdecoConfirmBtn'].forEach(function(id){
     document.getElementById(id).classList.remove('show');
   });
 }
@@ -406,11 +476,26 @@ async function analyzePhoto(){
       document.getElementById('rawText').textContent='読み取ったテキスト:\n'+result.rawText;
       document.getElementById('rawText').classList.add('show');
     }
-    if(!result.entries||!result.entries.length){
-      showError('photoError','明細を検出できませんでした。手動で入力してください。');
+    var type=result.type||'transactions';
+    if(type==='securities'){
+      if(!result.holdings||!result.holdings.length){
+        showError('photoError','証券銘柄を検出できませんでした。');
+      }else{
+        securitiesData=result.holdings;
+        renderSecuritiesReview();
+      }
+    }else if(type==='ideco'){
+      idecoData=result.ideco||{balance:0,contribution:0};
+      renderIdecoReview();
+    }else if(type==='unknown'){
+      showError('photoError','画面の種類を判定できませんでした。手動で入力してください。');
     }else{
-      reviewData.photo=result.entries;
-      renderReview('photo');
+      if(!result.entries||!result.entries.length){
+        showError('photoError','明細を検出できませんでした。手動で入力してください。');
+      }else{
+        reviewData.photo=result.entries;
+        renderReview('photo');
+      }
     }
   }catch(e){
     document.getElementById('photoLoading').classList.remove('show');
@@ -520,6 +605,69 @@ async function confirmReview(kind){
     if(kind==='photo')clearPhoto();
     if(kind==='csv')clearCSV();
   }catch(e){showError(kind+'Error','エラー: '+e.message);}
+  btn.disabled=false;
+}
+
+function renderSecuritiesReview(){
+  document.getElementById('photoSecuritiesReview').innerHTML=securitiesData.map(function(h,i){
+    return '<div class="review-item">'+
+      '<input type="text" class="sec-input name" value="'+escapeAttr(h.company||'')+'" placeholder="証券会社" onchange="securitiesData['+i+'].company=this.value">'+
+      '<input type="text" class="sec-input name" value="'+escapeAttr(h.name||'')+'" placeholder="銘柄名" onchange="securitiesData['+i+'].name=this.value">'+
+      '<input type="number" class="sec-input" value="'+(h.investment||0)+'" placeholder="取得金額" onchange="securitiesData['+i+'].investment=Number(this.value)">'+
+      '<input type="number" class="sec-input" value="'+(h.current_value||0)+'" placeholder="評価額" onchange="securitiesData['+i+'].current_value=Number(this.value)">'+
+      '<input type="number" class="sec-input" value="'+(h.unrealized_gain||0)+'" placeholder="評価損益" onchange="securitiesData['+i+'].unrealized_gain=Number(this.value)">'+
+      '<input type="number" class="sec-input" value="'+(h.return_rate||0)+'" placeholder="騰落率%" onchange="securitiesData['+i+'].return_rate=Number(this.value)">'+
+      '<button class="remove-btn" onclick="removeSecuritiesItem('+i+')">✕</button>'+
+    '</div>';
+  }).join('');
+  document.getElementById('photoSecuritiesReview').classList.add('show');
+  document.getElementById('photoSecuritiesConfirmBtn').classList.add('show');
+}
+
+function removeSecuritiesItem(idx){
+  securitiesData.splice(idx,1);
+  renderSecuritiesReview();
+}
+
+async function confirmSecurities(){
+  var btn=document.getElementById('photoSecuritiesConfirmBtn');
+  var ok=document.getElementById('photoSecuritiesSuccess');
+  btn.disabled=true;
+  try{
+    await sendHoldingsToSheet(securitiesData);
+    ok.textContent='✅ '+securitiesData.length+'件の証券データを保存しました';
+    ok.classList.add('show');
+    securitiesData=[];
+    document.getElementById('photoSecuritiesReview').classList.remove('show');
+    btn.classList.remove('show');
+    clearPhoto();
+  }catch(e){showError('photoError','エラー: '+e.message);}
+  btn.disabled=false;
+}
+
+function renderIdecoReview(){
+  document.getElementById('photoIdecoReview').innerHTML=
+    '<div class="review-item" style="flex-direction:column;align-items:stretch">'+
+      '<div class="ideco-field"><label>資産残高（円）</label><input type="number" id="idecoBalance" value="'+(idecoData.balance||0)+'" onchange="idecoData.balance=Number(this.value)"></div>'+
+      '<div class="ideco-field"><label>掛金（円・任意）</label><input type="number" id="idecoContribution" value="'+(idecoData.contribution||0)+'" onchange="idecoData.contribution=Number(this.value)"></div>'+
+    '</div>';
+  document.getElementById('photoIdecoReview').classList.add('show');
+  document.getElementById('photoIdecoConfirmBtn').classList.add('show');
+}
+
+async function confirmIdeco(){
+  var btn=document.getElementById('photoIdecoConfirmBtn');
+  var ok=document.getElementById('photoIdecoSuccess');
+  btn.disabled=true;
+  try{
+    await sendIdecoToSheet(idecoData);
+    ok.textContent='✅ iDeCo残高を保存しました（¥'+Number(idecoData.balance||0).toLocaleString()+'）';
+    ok.classList.add('show');
+    idecoData=null;
+    document.getElementById('photoIdecoReview').classList.remove('show');
+    btn.classList.remove('show');
+    clearPhoto();
+  }catch(e){showError('photoError','エラー: '+e.message);}
   btn.disabled=false;
 }
 
