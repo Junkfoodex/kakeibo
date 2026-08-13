@@ -241,8 +241,8 @@ function sendToSheet(entries){
     var timer=setTimeout(function(){
       delete window[cb];
       if(s.parentNode)s.parentNode.removeChild(s);
-      reject(new Error('タイムアウト'));
-    },15000);
+      reject(new Error('タイムアウト（30秒）。処理は裏側で続いている可能性があるので、少し待ってからスプレッドシートを確認してください。'));
+    },30000);
     window[cb]=function(data){
       clearTimeout(timer);
       delete window[cb];
@@ -268,8 +268,8 @@ function sendHoldingsToSheet(holdings){
     var timer=setTimeout(function(){
       delete window[cb];
       if(s.parentNode)s.parentNode.removeChild(s);
-      reject(new Error('タイムアウト'));
-    },15000);
+      reject(new Error('タイムアウト（30秒）。処理は裏側で続いている可能性があるので、少し待ってからスプレッドシートを確認してください。'));
+    },30000);
     window[cb]=function(data){
       clearTimeout(timer);
       delete window[cb];
@@ -297,8 +297,8 @@ function sendIdecoToSheet(ideco){
     var timer=setTimeout(function(){
       delete window[cb];
       if(s.parentNode)s.parentNode.removeChild(s);
-      reject(new Error('タイムアウト'));
-    },15000);
+      reject(new Error('タイムアウト（30秒）。処理は裏側で続いている可能性があるので、少し待ってからスプレッドシートを確認してください。'));
+    },30000);
     window[cb]=function(data){
       clearTimeout(timer);
       delete window[cb];
