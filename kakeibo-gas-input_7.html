@@ -327,8 +327,8 @@ function analyzeByFileId(fileId){
     var timer=setTimeout(function(){
       delete window[cb];
       if(s.parentNode)s.parentNode.removeChild(s);
-      reject(new Error('タイムアウト（90秒）。画像が大きい、複数枚同時解析中、またはGemini側が混雑している可能性があります。もう一度試してください。'));
-    },90000);
+      reject(new Error('タイムアウト（180秒）。画像が大きい、複数枚同時解析中、またはGemini側が混雑している可能性があります。もう一度試してください。'));
+    },180000);
     window[cb]=function(data){
       clearTimeout(timer);
       delete window[cb];
