@@ -464,7 +464,9 @@ function renderSelectedFiles(){
     loadPhotoImage(f.id).then(function(url){
       var img=document.getElementById('thumb_'+f.id);
       if(img){img.src=url;img.style.display='block';}
-    }).catch(function(){});
+    }).catch(function(e){
+      showError('photoError','サムネイル読み込みエラー('+f.name+'): '+e.message);
+    });
   });
 }
 
@@ -473,26 +475,50 @@ function removeSelectedFile(idx){
   renderSelectedFiles();
 }
 
-// Drive APIから元画像をそのまま取得し、サムネイル表示＆タップで原寸表示（別タブ）できるようにする。
+// GAS経由（JSONP）で元画像をdata URLとして取得し、サムネイル表示＆タップで原寸表示（別タブ）
+// できるようにする。ブラウザから直接Drive APIをfetchするとCORSで失敗することがあるため、
+// 既にVision解析で実績のあるGAS(DriveApp)経由の取得に統一している。
 // これにより、Gemini/Vision側の読み取りミス（文字化けした銘柄名など）をユーザーが
 // 元のスクショと見比べて確認・手直しできる。
 function loadPhotoImage(id){
   if(photoImageUrls[id])return Promise.resolve(photoImageUrls[id]);
-  if(!accessToken)return Promise.reject(new Error('認証トークンがありません'));
-  return fetch('https://www.googleapis.com/drive/v3/files/'+id+'?alt=media',{
-    headers:{Authorization:'Bearer '+accessToken}
-  }).then(function(r){
-    if(!r.ok)throw new Error('画像取得失敗 ('+r.status+')');
-    return r.blob();
-  }).then(function(blob){
-    var url=URL.createObjectURL(blob);
-    photoImageUrls[id]=url;
-    return url;
+  return new Promise(function(resolve,reject){
+    var cb='previewCallback_'+Date.now()+'_'+Math.floor(Math.random()*10000);
+    var s=document.createElement('script');
+    var timer=setTimeout(function(){
+      delete window[cb];
+      if(s.parentNode)s.parentNode.removeChild(s);
+      reject(new Error('タイムアウト（30秒）'));
+    },30000);
+    window[cb]=function(data){
+      clearTimeout(timer);
+      delete window[cb];
+      if(s.parentNode)s.parentNode.removeChild(s);
+      if(data&&data.success&&data.dataUrl){
+        photoImageUrls[id]=data.dataUrl;
+        resolve(data.dataUrl);
+      }else{
+        reject(new Error((data&&data.message)||'画像取得失敗'));
+      }
+    };
+    s.src=GAS_URL+'?previewFileId='+encodeURIComponent(id)+'&callback='+cb;
+    s.onerror=function(){
+      clearTimeout(timer);
+      delete window[cb];
+      if(s.parentNode)s.parentNode.removeChild(s);
+      reject(new Error('通信エラー'));
+    };
+    document.body.appendChild(s);
   });
 }
 
 function openFullImage(id){
-  loadPhotoImage(id).then(function(url){
+  loadPhotoImage(id).then(function(dataUrl){
+    // data:URLへの直接ナビゲーション(window.open)はブラウザにブロックされる場合があるため、
+    // 一度blobに変換してobject URLを開く
+    return fetch(dataUrl).then(function(r){return r.blob();});
+  }).then(function(blob){
+    var url=URL.createObjectURL(blob);
     window.open(url,'_blank');
   }).catch(function(e){
     showError('photoError','画像を開けませんでした: '+e.message);
@@ -530,7 +556,6 @@ document.getElementById('photoInput').addEventListener('change',function(e){
 function clearPhoto(){
   photoFile=null;
   selectedFiles=[];
-  Object.keys(photoImageUrls).forEach(function(id){URL.revokeObjectURL(photoImageUrls[id]);});
   photoImageUrls={};
   document.getElementById('photoInput').value='';
   document.getElementById('photoFileList').innerHTML='';
