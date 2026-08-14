@@ -47,6 +47,7 @@ select.csv-bank{width:100%;background:var(--paper);color:var(--ink);border:none;
 .preview-row.show{display:flex}
 .preview-row .name{flex:1}
 .preview-row button{background:none;border:none;color:var(--vermillion);cursor:pointer;font-size:16px}
+.preview-row .thumb{width:44px;height:44px;object-fit:cover;border-radius:6px;background:var(--paper-dim);cursor:pointer;display:none;flex-shrink:0}
 .btn-analyze{width:100%;margin-top:10px;padding:13px;border:none;border-radius:10px;background:var(--gold);color:var(--ink);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;display:none}
 .btn-analyze.show{display:block}
 .btn-drive{width:100%;padding:13px;border:none;border-radius:10px;background:var(--celadon);color:white;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer}
@@ -72,8 +73,11 @@ select.csv-bank{width:100%;background:var(--paper);color:var(--ink);border:none;
 .error-msg.show{display:block}
 .success-msg{display:none;background:rgba(91,138,114,0.15);border:1px solid rgba(91,138,114,0.3);border-radius:10px;padding:12px 14px;font-size:12px;color:#a8c9b5;margin-top:10px}
 .success-msg.show{display:block}
-.raw-text{display:none;background:rgba(255,255,255,0.04);border-radius:10px;padding:12px;font-size:11px;color:var(--text-soft);margin-top:10px;white-space:pre-wrap;max-height:200px;overflow-y:auto}
+.raw-text{display:none;background:rgba(255,255,255,0.04);border-radius:10px;padding:12px;font-size:11px;color:var(--text-soft);margin-top:10px;white-space:pre-wrap;max-height:200px;overflow-y:auto;user-select:text}
 .raw-text.show{display:block}
+.raw-text-copy-wrap{display:none;justify-content:flex-end;margin-top:10px}
+.raw-text-copy-wrap.show{display:flex}
+.raw-text-copy-btn{background:var(--paper-dim);border:none;border-radius:6px;padding:5px 10px;font-size:11px;color:var(--ink);cursor:pointer;font-family:inherit}
 .recent-list{display:flex;flex-direction:column;gap:1px}
 .recent-item{background:var(--paper);color:var(--ink);padding:12px 16px;display:flex;align-items:center;gap:12px}
 .recent-item:first-child{border-radius:14px 14px 0 0}
@@ -142,6 +146,9 @@ select.csv-bank{width:100%;background:var(--paper);color:var(--ink);border:none;
       <button class="btn-analyze" id="photoAnalyzeBtn" onclick="analyzePhoto()">🔍 読み取る（複数選択時は一括解析）</button>
       <div class="loading-inline" id="photoLoading"><div class="spinner-sm"></div>GAS経由で解析中...</div>
       <div class="error-msg" id="photoError"></div>
+      <div class="raw-text-copy-wrap" id="rawTextCopyWrap">
+        <button type="button" class="raw-text-copy-btn" id="copyRawTextBtn" onclick="copyRawText()">📋 テキストをコピー</button>
+      </div>
       <div class="raw-text" id="rawText"></div>
       <div class="review-list" id="photoReview"></div>
       <button class="btn-confirm-all" id="photoConfirmBtn" onclick="confirmReview('photo')">スプレッドシートに追加</button>
@@ -199,6 +206,7 @@ var GOOGLE_CLIENT_ID='958314442221-jqh28oakgll8goaih2r5cqmvd070k3im.apps.googleu
 var DRIVE_FOLDER_ID='1B2mAntpJJV3sCKza08r_LZ4VqC2BwlxQ';
 var manualType='expense',photoFile=null,selectedFiles=[],csvFile=null,reviewData={photo:[],csv:[]},recentEntries=[],accessToken=null;
 var securitiesData=[],idecoDataList=[],currentSheetName=null;
+var photoImageUrls={};
 var pickerInited=false;
 var pickerTimer=setInterval(function(){
   if(typeof gapi!=='undefined'&&gapi.load){
@@ -446,15 +454,66 @@ function renderSelectedFiles(){
     return;
   }
   box.innerHTML=selectedFiles.map(function(f,i){
-    return '<div class="preview-row show"><span>📎</span><span class="name">'+escapeHtml(f.name)+'</span>'+
+    return '<div class="preview-row show">'+
+      '<img class="thumb" id="thumb_'+f.id+'" alt="" onclick="openFullImage(\''+f.id+'\')">'+
+      '<span>📎</span><span class="name">'+escapeHtml(f.name)+'</span>'+
       '<button onclick="removeSelectedFile('+i+')">✕</button></div>';
   }).join('');
   document.getElementById('photoAnalyzeBtn').classList.add('show');
+  selectedFiles.forEach(function(f){
+    loadPhotoImage(f.id).then(function(url){
+      var img=document.getElementById('thumb_'+f.id);
+      if(img){img.src=url;img.style.display='block';}
+    }).catch(function(){});
+  });
 }
 
 function removeSelectedFile(idx){
   selectedFiles.splice(idx,1);
   renderSelectedFiles();
+}
+
+// Drive APIから元画像をそのまま取得し、サムネイル表示＆タップで原寸表示（別タブ）できるようにする。
+// これにより、Gemini/Vision側の読み取りミス（文字化けした銘柄名など）をユーザーが
+// 元のスクショと見比べて確認・手直しできる。
+function loadPhotoImage(id){
+  if(photoImageUrls[id])return Promise.resolve(photoImageUrls[id]);
+  if(!accessToken)return Promise.reject(new Error('認証トークンがありません'));
+  return fetch('https://www.googleapis.com/drive/v3/files/'+id+'?alt=media',{
+    headers:{Authorization:'Bearer '+accessToken}
+  }).then(function(r){
+    if(!r.ok)throw new Error('画像取得失敗 ('+r.status+')');
+    return r.blob();
+  }).then(function(blob){
+    var url=URL.createObjectURL(blob);
+    photoImageUrls[id]=url;
+    return url;
+  });
+}
+
+function openFullImage(id){
+  loadPhotoImage(id).then(function(url){
+    window.open(url,'_blank');
+  }).catch(function(e){
+    showError('photoError','画像を開けませんでした: '+e.message);
+  });
+}
+
+function copyRawText(){
+  var txt=document.getElementById('rawText').textContent;
+  var btn=document.getElementById('copyRawTextBtn');
+  var done=function(){
+    var orig=btn.textContent;
+    btn.textContent='✅ コピーしました';
+    setTimeout(function(){btn.textContent=orig;},1500);
+  };
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(done).catch(function(){
+      alert('コピーに失敗しました。テキストを長押し（または選択）して手動でコピーしてください。');
+    });
+  }else{
+    alert('このブラウザは自動コピーに対応していません。テキストを長押し（または選択）して手動でコピーしてください。');
+  }
 }
 
 document.getElementById('photoInput').addEventListener('change',function(e){
@@ -471,9 +530,11 @@ document.getElementById('photoInput').addEventListener('change',function(e){
 function clearPhoto(){
   photoFile=null;
   selectedFiles=[];
+  Object.keys(photoImageUrls).forEach(function(id){URL.revokeObjectURL(photoImageUrls[id]);});
+  photoImageUrls={};
   document.getElementById('photoInput').value='';
   document.getElementById('photoFileList').innerHTML='';
-  ['photoPreview','photoAnalyzeBtn','photoReview','photoConfirmBtn','rawText','photoSecuritiesReview','photoSecuritiesConfirmBtn','photoIdecoReview','photoIdecoConfirmBtn'].forEach(function(id){
+  ['photoPreview','photoAnalyzeBtn','photoReview','photoConfirmBtn','rawText','rawTextCopyWrap','photoSecuritiesReview','photoSecuritiesConfirmBtn','photoIdecoReview','photoIdecoConfirmBtn'].forEach(function(id){
     document.getElementById(id).classList.remove('show');
   });
 }
@@ -542,6 +603,7 @@ async function analyzePhoto(){
   if(rawTexts.length){
     document.getElementById('rawText').textContent='読み取ったテキスト:\n\n'+rawTexts.join('\n\n---\n\n');
     document.getElementById('rawText').classList.add('show');
+    document.getElementById('rawTextCopyWrap').classList.add('show');
   }
   if(errors.length)showError('photoError',errors.join('\n'));
   if(allEntries.length){reviewData.photo=allEntries;renderReview('photo');}
