@@ -497,17 +497,22 @@ async function analyzePhoto(){
   loadingEl.classList.add('show');
   loadingEl.innerHTML='<div class="spinner-sm"></div>GAS経由で解析中... (0/'+total+'件)';
 
-  var settled=await Promise.allSettled(selectedFiles.map(function(f){
-    return analyzeByFileId(f.id).then(function(r){
+  // Gemini/Vision APIが同時多重リクエストに弱く、並列実行すると詰まって
+  // 全件タイムアウトすることがあるため、1枚ずつ順番に解析する
+  var settled=[];
+  for(var fi=0; fi<selectedFiles.length; fi++){
+    var f=selectedFiles[fi];
+    loadingEl.innerHTML='<div class="spinner-sm"></div>GAS経由で解析中... ('+completed+'/'+total+'件: '+escapeHtml(f.name)+')';
+    try{
+      var r=await analyzeByFileId(f.id);
       completed++;
-      loadingEl.innerHTML='<div class="spinner-sm"></div>GAS経由で解析中... ('+completed+'/'+total+'件)';
-      return {file:f,result:r};
-    },function(e){
+      settled.push({status:'fulfilled',value:{file:f,result:r}});
+    }catch(e){
       completed++;
-      loadingEl.innerHTML='<div class="spinner-sm"></div>GAS経由で解析中... ('+completed+'/'+total+'件)';
-      throw e;
-    });
-  }));
+      settled.push({status:'rejected',reason:e});
+    }
+    loadingEl.innerHTML='<div class="spinner-sm"></div>GAS経由で解析中... ('+completed+'/'+total+'件)';
+  }
 
   loadingEl.classList.remove('show');
 
