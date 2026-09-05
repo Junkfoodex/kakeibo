@@ -96,104 +96,104 @@ select.csv-bank{width:100%;background:var(--paper);color:var(--ink);border:none;
 </head>
 <body>
 <header>
-  <div class="app-title"><span class="stamp">記</span>家計簿入力</div>
-  <p>Googleスプレッドシートに直接保存</p>
+ <div class="app-title"><span class="stamp">記</span>家計簿入力</div>
+ <p>Googleスプレッドシートに直接保存</p>
 </header>
 <div class="main">
-  <div class="security-note">
-    <span>🔒</span>
-    <span>確定した明細は、お使いのGoogleスプレッドシートに直接書き込まれます。画像はGAS経由でGoogle Vision APIで解析されます。</span>
-  </div>
-  <div>
-    <div class="input-tabs">
-      <button class="input-tab active" data-panel="manual" onclick="switchTab(this)">✎ 手入力</button>
-      <button class="input-tab" data-panel="photo" onclick="switchTab(this)">📷 写真</button>
-      <button class="input-tab" data-panel="csv" onclick="switchTab(this)">📄 CSV</button>
-    </div>
-    <div class="input-panel active" id="panel-manual">
-      <div class="type-toggle">
-        <button class="type-btn expense active" id="typeExpenseBtn" onclick="setManualType('expense')">支出</button>
-        <button class="type-btn income" id="typeIncomeBtn" onclick="setManualType('income')">収入</button>
-      </div>
-      <div class="form-row">
-        <div class="form-field"><label>日付</label><input type="date" id="mDate"></div>
-        <div class="form-field"><label>金額</label><input type="number" id="mAmount" placeholder="0"></div>
-      </div>
-      <div class="form-row">
-        <div class="form-field"><label>内容</label><input type="text" id="mDesc" placeholder="例：スーパー、給料など"></div>
-        <div class="form-field"><label>カテゴリ</label><select id="mCategory"></select></div>
-      </div>
-      <div class="form-row">
-        <div class="form-field" style="grid-column:1 / span 2"><label>支払い方法</label><select id="mPaymentMethod"></select></div>
-      </div>
-      <button class="btn-submit" onclick="addManualEntry()">スプレッドシートに追加</button>
-      <div class="success-msg" id="manualSuccess"></div>
-      <div class="error-msg" id="manualError"></div>
-    </div>
-    <div class="input-panel" id="panel-photo">
-      <button class="btn-drive" onclick="openDrivePicker()">📂 家計簿スクショから選択</button>
-      <div class="upload-zone" style="margin-top:10px;">
-        <input type="file" id="photoInput" accept="image/*">
-        <div class="icon">📷</div>
-        <h3>または写真を直接アップロード</h3>
-        <p>レシート、クレカ明細、銀行アプリのスクショなど</p>
-      </div>
-      <div class="preview-row" id="photoPreview">
-        <span>📎</span><span class="name" id="photoName"></span>
-        <button onclick="clearPhoto()">✕</button>
-      </div>
-      <div id="photoFileList" style="display:flex;flex-direction:column;gap:8px;margin-top:10px"></div>
-      <button class="btn-analyze" id="photoAnalyzeBtn" onclick="analyzePhoto()">🔍 読み取る（複数選択時は一括解析）</button>
-      <div class="loading-inline" id="photoLoading"><div class="spinner-sm"></div>GAS経由で解析中...</div>
-      <div class="error-msg" id="photoError"></div>
-      <div class="raw-text-copy-wrap" id="rawTextCopyWrap">
-        <button type="button" class="raw-text-copy-btn" id="copyRawTextBtn" onclick="copyRawText()">📋 テキストをコピー</button>
-      </div>
-      <div class="raw-text" id="rawText"></div>
-      <div class="review-list" id="photoReview"></div>
-      <button class="btn-confirm-all" id="photoConfirmBtn" onclick="confirmReview('photo')">スプレッドシートに追加</button>
-      <div class="success-msg" id="photoSuccess"></div>
-      <div class="review-list" id="photoSecuritiesReview"></div>
-      <button class="btn-confirm-all" id="photoSecuritiesConfirmBtn" onclick="confirmSecurities()">証券データを保存</button>
-      <div class="success-msg" id="photoSecuritiesSuccess"></div>
-      <div class="review-list" id="photoIdecoReview"></div>
-      <button class="btn-confirm-all" id="photoIdecoConfirmBtn" onclick="confirmIdeco()">iDeCo残高を保存</button>
-      <div class="success-msg" id="photoIdecoSuccess"></div>
-    </div>
-    <div class="input-panel" id="panel-csv">
-      <select class="csv-bank" id="csvBank">
-        <option value="自動判定">金融機関：自動判定</option>
-        <option value="楽天銀行">楽天銀行</option>
-        <option value="三菱UFJ銀行">三菱UFJ銀行</option>
-        <option value="ゆうちょ銀行">ゆうちょ銀行</option>
-        <option value="三井住友銀行">三井住友銀行</option>
-        <option value="楽天カード">楽天カード</option>
-        <option value="エポスカード">エポスカード</option>
-        <option value="viewカード">viewカード</option>
-        <option value="三井住友カード">三井住友カード</option>
-      </select>
-      <div class="upload-zone">
-        <input type="file" id="csvInput" accept=".csv,.txt">
-        <div class="icon">📄</div>
-        <h3>明細CSVファイル</h3>
-        <p>銀行・カードサイトでダウンロードしたCSV</p>
-      </div>
-      <div class="preview-row" id="csvPreview">
-        <span>📄</span><span class="name" id="csvName"></span>
-        <button onclick="clearCSV()">✕</button>
-      </div>
-      <button class="btn-analyze" id="csvAnalyzeBtn" onclick="analyzeCSV()">🔍 読み取る</button>
-      <div class="loading-inline" id="csvLoading"><div class="spinner-sm"></div>解析中...</div>
-      <div class="error-msg" id="csvError"></div>
-      <div class="review-list" id="csvReview"></div>
-      <button class="btn-confirm-all" id="csvConfirmBtn" onclick="confirmReview('csv')">スプレッドシートに追加</button>
-      <div class="success-msg" id="csvSuccess"></div>
-    </div>
-  </div>
-  <div id="recentSection" style="display:none">
-    <div class="section-title">今回追加した明細</div>
-    <div class="recent-list" id="recentList"></div>
-  </div>
+ <div class="security-note">
+ <span>🔒</span>
+ <span>確定した明細は、お使いのGoogleスプレッドシートに直接書き込まれます。画像はGAS経由でGoogle Vision APIで解析されます。</span>
+ </div>
+ <div>
+ <div class="input-tabs">
+ <button class="input-tab active" data-panel="manual" onclick="switchTab(this)">✎ 手入力</button>
+ <button class="input-tab" data-panel="photo" onclick="switchTab(this)">📷 写真</button>
+ <button class="input-tab" data-panel="csv" onclick="switchTab(this)">📄 CSV</button>
+ </div>
+ <div class="input-panel active" id="panel-manual">
+ <div class="type-toggle">
+ <button class="type-btn expense active" id="typeExpenseBtn" onclick="setManualType('expense')">支出</button>
+ <button class="type-btn income" id="typeIncomeBtn" onclick="setManualType('income')">収入</button>
+ </div>
+ <div class="form-row">
+ <div class="form-field"><label>日付</label><input type="date" id="mDate"></div>
+ <div class="form-field"><label>金額</label><input type="number" id="mAmount" placeholder="0"></div>
+ </div>
+ <div class="form-row">
+ <div class="form-field"><label>内容</label><input type="text" id="mDesc" placeholder="例：スーパー、給料など"></div>
+ <div class="form-field"><label>カテゴリ</label><select id="mCategory"></select></div>
+ </div>
+ <div class="form-row">
+ <div class="form-field" style="grid-column:1 / span 2"><label>支払い方法</label><select id="mPaymentMethod"></select></div>
+ </div>
+ <button class="btn-submit" onclick="addManualEntry()">スプレッドシートに追加</button>
+ <div class="success-msg" id="manualSuccess"></div>
+ <div class="error-msg" id="manualError"></div>
+ </div>
+ <div class="input-panel" id="panel-photo">
+ <button class="btn-drive" onclick="openDrivePicker()">📂 家計簿スクショから選択</button>
+ <div class="upload-zone" style="margin-top:10px;">
+ <input type="file" id="photoInput" accept="image/*">
+ <div class="icon">📷</div>
+ <h3>または写真を直接アップロード</h3>
+ <p>レシート、クレカ明細、銀行アプリのスクショなど</p>
+ </div>
+ <div class="preview-row" id="photoPreview">
+ <span>📎</span><span class="name" id="photoName"></span>
+ <button onclick="clearPhoto()">✕</button>
+ </div>
+ <div id="photoFileList" style="display:flex;flex-direction:column;gap:8px;margin-top:10px"></div>
+ <button class="btn-analyze" id="photoAnalyzeBtn" onclick="analyzePhoto()">🔍 読み取る（複数選択時は一括解析）</button>
+ <div class="loading-inline" id="photoLoading"><div class="spinner-sm"></div>GAS経由で解析中...</div>
+ <div class="error-msg" id="photoError"></div>
+ <div class="raw-text-copy-wrap" id="rawTextCopyWrap">
+ <button type="button" class="raw-text-copy-btn" id="copyRawTextBtn" onclick="copyRawText()">📋 テキストをコピー</button>
+ </div>
+ <div class="raw-text" id="rawText"></div>
+ <div class="review-list" id="photoReview"></div>
+ <button class="btn-confirm-all" id="photoConfirmBtn" onclick="confirmReview('photo')">スプレッドシートに追加</button>
+ <div class="success-msg" id="photoSuccess"></div>
+ <div class="review-list" id="photoSecuritiesReview"></div>
+ <button class="btn-confirm-all" id="photoSecuritiesConfirmBtn" onclick="confirmSecurities()">証券データを保存</button>
+ <div class="success-msg" id="photoSecuritiesSuccess"></div>
+ <div class="review-list" id="photoIdecoReview"></div>
+ <button class="btn-confirm-all" id="photoIdecoConfirmBtn" onclick="confirmIdeco()">iDeCo残高を保存</button>
+ <div class="success-msg" id="photoIdecoSuccess"></div>
+ </div>
+ <div class="input-panel" id="panel-csv">
+ <select class="csv-bank" id="csvBank">
+ <option value="自動判定">金融機関：自動判定</option>
+ <option value="楽天銀行">楽天銀行</option>
+ <option value="三菱UFJ銀行">三菱UFJ銀行</option>
+ <option value="ゆうちょ銀行">ゆうちょ銀行</option>
+ <option value="三井住友銀行">三井住友銀行</option>
+ <option value="楽天カード">楽天カード</option>
+ <option value="エポスカード">エポスカード</option>
+ <option value="viewカード">viewカード</option>
+ <option value="三井住友カード">三井住友カード</option>
+ </select>
+ <div class="upload-zone">
+ <input type="file" id="csvInput" accept=".csv,.txt">
+ <div class="icon">📄</div>
+ <h3>明細CSVファイル</h3>
+ <p>銀行・カードサイトでダウンロードしたCSV</p>
+ </div>
+ <div class="preview-row" id="csvPreview">
+ <span>📄</span><span class="name" id="csvName"></span>
+ <button onclick="clearCSV()">✕</button>
+ </div>
+ <button class="btn-analyze" id="csvAnalyzeBtn" onclick="analyzeCSV()">🔍 読み取る</button>
+ <div class="loading-inline" id="csvLoading"><div class="spinner-sm"></div>解析中...</div>
+ <div class="error-msg" id="csvError"></div>
+ <div class="review-list" id="csvReview"></div>
+ <button class="btn-confirm-all" id="csvConfirmBtn" onclick="confirmReview('csv')">スプレッドシートに追加</button>
+ <div class="success-msg" id="csvSuccess"></div>
+ </div>
+ </div>
+ <div id="recentSection" style="display:none">
+ <div class="section-title">今回追加した明細</div>
+ <div class="recent-list" id="recentList"></div>
+ </div>
 </div>
 <script>
 var CATEGORIES={expense:['食費','日用品','交通費','光熱費','通信費','医療費','住居費','保険','娯楽','教育','その他'],income:['給与','ボーナス','副業','その他収入']};
@@ -209,270 +209,296 @@ var securitiesData=[],idecoDataList=[],currentSheetName=null;
 var photoImageUrls={};
 var pickerInited=false;
 var pickerTimer=setInterval(function(){
-  if(typeof gapi!=='undefined'&&gapi.load){
-    clearInterval(pickerTimer);
-    gapi.load('picker',function(){pickerInited=true;});
-  }
+ if(typeof gapi!=='undefined'&&gapi.load){
+ clearInterval(pickerTimer);
+ gapi.load('picker',function(){pickerInited=true;});
+ }
 },500);
 
 function init(){
-  document.getElementById('mDate').value=new Date().toISOString().slice(0,10);
-  updateCategoryOptions();
-  populatePaymentMethods();
+ document.getElementById('mDate').value=new Date().toISOString().slice(0,10);
+ updateCategoryOptions();
+ populatePaymentMethods();
 }
 
 function updateCategoryOptions(){
-  document.getElementById('mCategory').innerHTML=CATEGORIES[manualType].map(function(c){return '<option>'+c+'</option>';}).join('');
+ document.getElementById('mCategory').innerHTML=CATEGORIES[manualType].map(function(c){return '<option>'+c+'</option>';}).join('');
 }
 
 function populatePaymentMethods(){
-  document.getElementById('mPaymentMethod').innerHTML=PAYMENT_METHODS.map(function(m){return '<option>'+m+'</option>';}).join('');
+ document.getElementById('mPaymentMethod').innerHTML=PAYMENT_METHODS.map(function(m){return '<option>'+m+'</option>';}).join('');
 }
 
 function setManualType(type){
-  manualType=type;
-  document.getElementById('typeExpenseBtn').classList.toggle('active',type==='expense');
-  document.getElementById('typeIncomeBtn').classList.toggle('active',type==='income');
-  updateCategoryOptions();
+ manualType=type;
+ document.getElementById('typeExpenseBtn').classList.toggle('active',type==='expense');
+ document.getElementById('typeIncomeBtn').classList.toggle('active',type==='income');
+ updateCategoryOptions();
 }
 
 function switchTab(btn){
-  document.querySelectorAll('.input-tab').forEach(function(t){t.classList.remove('active');});
-  document.querySelectorAll('.input-panel').forEach(function(p){p.classList.remove('active');});
-  btn.classList.add('active');
-  document.getElementById('panel-'+btn.dataset.panel).classList.add('active');
+ document.querySelectorAll('.input-tab').forEach(function(t){t.classList.remove('active');});
+ document.querySelectorAll('.input-panel').forEach(function(p){p.classList.remove('active');});
+ btn.classList.add('active');
+ document.getElementById('panel-'+btn.dataset.panel).classList.add('active');
+}
+
+function _collectFileIds(items){
+ var ids=[];
+ (items||[]).forEach(function(it){
+ if(it&&it._fileId&&ids.indexOf(it._fileId)===-1)ids.push(it._fileId);
+ });
+ return ids;
+}
+
+function _stripFileId(items){
+ return (items||[]).map(function(it){
+ var copy={};
+ for(var k in it){if(k!=='_fileId')copy[k]=it[k];}
+ return copy;
+ });
 }
 
 function sendToSheet(entries){
-  return new Promise(function(resolve,reject){
-    var cb='gasCallback_'+Date.now();
-    var s=document.createElement('script');
-    var timer=setTimeout(function(){
-      delete window[cb];
-      if(s.parentNode)s.parentNode.removeChild(s);
-      reject(new Error('タイムアウト（30秒）。処理は裏側で続いている可能性があるので、少し待ってからスプレッドシートを確認してください。'));
-    },30000);
-    window[cb]=function(data){
-      clearTimeout(timer);
-      delete window[cb];
-      if(s.parentNode)s.parentNode.removeChild(s);
-      if(data&&data.success){resolve(data);}
-      else{reject(new Error((data&&data.message)||'保存失敗'));}
-    };
-    s.src=GAS_URL+'?entries='+encodeURIComponent(JSON.stringify(entries))+'&callback='+cb;
-    s.onerror=function(){
-      clearTimeout(timer);
-      delete window[cb];
-      if(s.parentNode)s.parentNode.removeChild(s);
-      reject(new Error('通信エラー'));
-    };
-    document.body.appendChild(s);
-  });
+ var moveFileIds=_collectFileIds(entries);
+ var cleanEntries=_stripFileId(entries);
+ return new Promise(function(resolve,reject){
+ var cb='gasCallback_'+Date.now();
+ var s=document.createElement('script');
+ var timer=setTimeout(function(){
+ delete window[cb];
+ if(s.parentNode)s.parentNode.removeChild(s);
+ reject(new Error('タイムアウト（30秒）。処理は裏側で続いている可能性があるので、少し待ってからスプレッドシートを確認してください。'));
+ },30000);
+ window[cb]=function(data){
+ clearTimeout(timer);
+ delete window[cb];
+ if(s.parentNode)s.parentNode.removeChild(s);
+ if(data&&data.success){resolve(data);}
+ else{reject(new Error((data&&data.message)||'保存失敗'));}
+ };
+ var url=GAS_URL+'?entries='+encodeURIComponent(JSON.stringify(cleanEntries))+'&callback='+cb;
+ if(moveFileIds.length)url+='&moveFileIds='+encodeURIComponent(JSON.stringify(moveFileIds));
+ s.src=url;
+ s.onerror=function(){
+ clearTimeout(timer);
+ delete window[cb];
+ if(s.parentNode)s.parentNode.removeChild(s);
+ reject(new Error('通信エラー'));
+ };
+ document.body.appendChild(s);
+ });
 }
 
 function sendHoldingsToSheet(holdings){
-  return new Promise(function(resolve,reject){
-    var cb='holdingsCallback_'+Date.now();
-    var s=document.createElement('script');
-    var timer=setTimeout(function(){
-      delete window[cb];
-      if(s.parentNode)s.parentNode.removeChild(s);
-      reject(new Error('タイムアウト（30秒）。処理は裏側で続いている可能性があるので、少し待ってからスプレッドシートを確認してください。'));
-    },30000);
-    window[cb]=function(data){
-      clearTimeout(timer);
-      delete window[cb];
-      if(s.parentNode)s.parentNode.removeChild(s);
-      if(data&&data.success){resolve(data);}
-      else{reject(new Error((data&&data.message)||'保存失敗'));}
-    };
-    var url=GAS_URL+'?holdings='+encodeURIComponent(JSON.stringify(holdings))+'&callback='+cb;
-    if(currentSheetName)url+='&sheetName='+encodeURIComponent(currentSheetName);
-    s.src=url;
-    s.onerror=function(){
-      clearTimeout(timer);
-      delete window[cb];
-      if(s.parentNode)s.parentNode.removeChild(s);
-      reject(new Error('通信エラー'));
-    };
-    document.body.appendChild(s);
-  });
+ var moveFileIds=_collectFileIds(holdings);
+ var cleanHoldings=_stripFileId(holdings);
+ return new Promise(function(resolve,reject){
+ var cb='holdingsCallback_'+Date.now();
+ var s=document.createElement('script');
+ var timer=setTimeout(function(){
+ delete window[cb];
+ if(s.parentNode)s.parentNode.removeChild(s);
+ reject(new Error('タイムアウト（30秒）。処理は裏側で続いている可能性があるので、少し待ってからスプレッドシートを確認してください。'));
+ },30000);
+ window[cb]=function(data){
+ clearTimeout(timer);
+ delete window[cb];
+ if(s.parentNode)s.parentNode.removeChild(s);
+ if(data&&data.success){resolve(data);}
+ else{reject(new Error((data&&data.message)||'保存失敗'));}
+ };
+ var url=GAS_URL+'?holdings='+encodeURIComponent(JSON.stringify(cleanHoldings))+'&callback='+cb;
+ if(currentSheetName)url+='&sheetName='+encodeURIComponent(currentSheetName);
+ if(moveFileIds.length)url+='&moveFileIds='+encodeURIComponent(JSON.stringify(moveFileIds));
+ s.src=url;
+ s.onerror=function(){
+ clearTimeout(timer);
+ delete window[cb];
+ if(s.parentNode)s.parentNode.removeChild(s);
+ reject(new Error('通信エラー'));
+ };
+ document.body.appendChild(s);
+ });
 }
 
 function sendIdecoToSheet(ideco){
-  return new Promise(function(resolve,reject){
-    var cb='idecoCallback_'+Date.now();
-    var s=document.createElement('script');
-    var timer=setTimeout(function(){
-      delete window[cb];
-      if(s.parentNode)s.parentNode.removeChild(s);
-      reject(new Error('タイムアウト（30秒）。処理は裏側で続いている可能性があるので、少し待ってからスプレッドシートを確認してください。'));
-    },30000);
-    window[cb]=function(data){
-      clearTimeout(timer);
-      delete window[cb];
-      if(s.parentNode)s.parentNode.removeChild(s);
-      if(data&&data.success){resolve(data);}
-      else{reject(new Error((data&&data.message)||'保存失敗'));}
-    };
-    var url=GAS_URL+'?ideco='+encodeURIComponent(JSON.stringify(ideco))+'&callback='+cb;
-    if(currentSheetName)url+='&sheetName='+encodeURIComponent(currentSheetName);
-    s.src=url;
-    s.onerror=function(){
-      clearTimeout(timer);
-      delete window[cb];
-      if(s.parentNode)s.parentNode.removeChild(s);
-      reject(new Error('通信エラー'));
-    };
-    document.body.appendChild(s);
-  });
+ var moveFileIds=ideco&&ideco._fileId?[ideco._fileId]:[];
+ var cleanIdeco={balance:ideco.balance,contribution:ideco.contribution};
+ return new Promise(function(resolve,reject){
+ var cb='idecoCallback_'+Date.now();
+ var s=document.createElement('script');
+ var timer=setTimeout(function(){
+ delete window[cb];
+ if(s.parentNode)s.parentNode.removeChild(s);
+ reject(new Error('タイムアウト（30秒）。処理は裏側で続いている可能性があるので、少し待ってからスプレッドシートを確認してください。'));
+ },30000);
+ window[cb]=function(data){
+ clearTimeout(timer);
+ delete window[cb];
+ if(s.parentNode)s.parentNode.removeChild(s);
+ if(data&&data.success){resolve(data);}
+ else{reject(new Error((data&&data.message)||'保存失敗'));}
+ };
+ var url=GAS_URL+'?ideco='+encodeURIComponent(JSON.stringify(cleanIdeco))+'&callback='+cb;
+ if(currentSheetName)url+='&sheetName='+encodeURIComponent(currentSheetName);
+ if(moveFileIds.length)url+='&moveFileIds='+encodeURIComponent(JSON.stringify(moveFileIds));
+ s.src=url;
+ s.onerror=function(){
+ clearTimeout(timer);
+ delete window[cb];
+ if(s.parentNode)s.parentNode.removeChild(s);
+ reject(new Error('通信エラー'));
+ };
+ document.body.appendChild(s);
+ });
 }
 
 function analyzeByFileId(fileId){
-  return new Promise(function(resolve,reject){
-    var cb='visionCallback_'+Date.now();
-    var s=document.createElement('script');
-    var timer=setTimeout(function(){
-      delete window[cb];
-      if(s.parentNode)s.parentNode.removeChild(s);
-      reject(new Error('タイムアウト（180秒）。画像が大きい、複数枚同時解析中、またはGemini側が混雑している可能性があります。もう一度試してください。'));
-    },180000);
-    window[cb]=function(data){
-      clearTimeout(timer);
-      delete window[cb];
-      if(s.parentNode)s.parentNode.removeChild(s);
-      if(data&&data.success){resolve(data);}
-      else{reject(new Error((data&&data.message)||'解析失敗'));}
-    };
-    s.src=GAS_URL+'?fileId='+encodeURIComponent(fileId)+'&callback='+cb;
-    s.onerror=function(){
-      clearTimeout(timer);
-      delete window[cb];
-      if(s.parentNode)s.parentNode.removeChild(s);
-      reject(new Error('通信エラー'));
-    };
-    document.body.appendChild(s);
-  });
+ return new Promise(function(resolve,reject){
+ var cb='visionCallback_'+Date.now();
+ var s=document.createElement('script');
+ var timer=setTimeout(function(){
+ delete window[cb];
+ if(s.parentNode)s.parentNode.removeChild(s);
+ reject(new Error('タイムアウト（180秒）。画像が大きい、複数枚同時解析中、またはGemini側が混雑している可能性があります。もう一度試してください。'));
+ },180000);
+ window[cb]=function(data){
+ clearTimeout(timer);
+ delete window[cb];
+ if(s.parentNode)s.parentNode.removeChild(s);
+ if(data&&data.success){resolve(data);}
+ else{reject(new Error((data&&data.message)||'解析失敗'));}
+ };
+ s.src=GAS_URL+'?fileId='+encodeURIComponent(fileId)+'&callback='+cb;
+ s.onerror=function(){
+ clearTimeout(timer);
+ delete window[cb];
+ if(s.parentNode)s.parentNode.removeChild(s);
+ reject(new Error('通信エラー'));
+ };
+ document.body.appendChild(s);
+ });
 }
 
 async function addManualEntry(){
-  var amount=Number(document.getElementById('mAmount').value);
-  var desc=document.getElementById('mDesc').value.trim();
-  if(!amount||!desc){alert('内容と金額を入力してください');return;}
-  var paymentMethod=document.getElementById('mPaymentMethod').value;
-  var source=CARD_METHODS.indexOf(paymentMethod)!==-1?'card':'bank';
-  var entry={date:document.getElementById('mDate').value,description:desc,category:document.getElementById('mCategory').value,type:manualType,amount:amount,source:source,memo:paymentMethod};
-  var btn=document.querySelector('.btn-submit');
-  var ok=document.getElementById('manualSuccess');
-  var err=document.getElementById('manualError');
-  ok.classList.remove('show');err.classList.remove('show');btn.disabled=true;
-  try{
-    await sendToSheet([entry]);
-    ok.textContent='✅ スプレッドシートに追加しました';ok.classList.add('show');
-    addToRecent([entry]);
-    document.getElementById('mAmount').value='';
-    document.getElementById('mDesc').value='';
-  }catch(e){err.textContent='エラー: '+e.message;err.classList.add('show');}
-  btn.disabled=false;
+ var amount=Number(document.getElementById('mAmount').value);
+ var desc=document.getElementById('mDesc').value.trim();
+ if(!amount||!desc){alert('内容と金額を入力してください');return;}
+ var paymentMethod=document.getElementById('mPaymentMethod').value;
+ var source=CARD_METHODS.indexOf(paymentMethod)!==-1?'card':'bank';
+ var entry={date:document.getElementById('mDate').value,description:desc,category:document.getElementById('mCategory').value,type:manualType,amount:amount,source:source,memo:paymentMethod};
+ var btn=document.querySelector('.btn-submit');
+ var ok=document.getElementById('manualSuccess');
+ var err=document.getElementById('manualError');
+ ok.classList.remove('show');err.classList.remove('show');btn.disabled=true;
+ try{
+ await sendToSheet([entry]);
+ ok.textContent='✅ スプレッドシートに追加しました';ok.classList.add('show');
+ addToRecent([entry]);
+ document.getElementById('mAmount').value='';
+ document.getElementById('mDesc').value='';
+ }catch(e){err.textContent='エラー: '+e.message;err.classList.add('show');}
+ btn.disabled=false;
 }
 
 function openDrivePicker(){
-  if(typeof google==='undefined'||!google.accounts||!google.accounts.oauth2){
-    alert('Googleライブラリがまだ読み込まれていません。数秒待ってから再度クリックしてください。');
-    return;
-  }
-  pickerCallbackDone=false;
-  if(!accessToken){
-    var client=google.accounts.oauth2.initTokenClient({
-      client_id:GOOGLE_CLIENT_ID,
-      scope:'https://www.googleapis.com/auth/drive.readonly',
-      callback:function(t){accessToken=t.access_token;showPicker();}
-    });
-    client.requestAccessToken();
-  }else{showPicker();}
+ if(typeof google==='undefined'||!google.accounts||!google.accounts.oauth2){
+ alert('Googleライブラリがまだ読み込まれていません。数秒待ってから再度クリックしてください。');
+ return;
+ }
+ pickerCallbackDone=false;
+ if(!accessToken){
+ var client=google.accounts.oauth2.initTokenClient({
+ client_id:GOOGLE_CLIENT_ID,
+ scope:'https://www.googleapis.com/auth/drive.readonly',
+ callback:function(t){accessToken=t.access_token;showPicker();}
+ });
+ client.requestAccessToken();
+ }else{showPicker();}
 }
 
 function showPicker(){
-  if(!pickerInited){
-    gapi.load('picker',function(){
-      pickerInited=true;
-      buildAndShowPicker();
-    });
-    return;
-  }
-  buildAndShowPicker();
+ if(!pickerInited){
+ gapi.load('picker',function(){
+ pickerInited=true;
+ buildAndShowPicker();
+ });
+ return;
+ }
+ buildAndShowPicker();
 }
 
 var currentPicker=null;
 
 function buildAndShowPicker(){
-  var view=new google.picker.View(google.picker.ViewId.DOCS_IMAGES);
-  view.setParent(DRIVE_FOLDER_ID);
-  currentPicker=new google.picker.PickerBuilder()
-    .setTitle('家計簿スクショを選択（複数選択可）')
-    .addView(view)
-    .setOAuthToken(accessToken)
-    .setDeveloperKey(GOOGLE_API_KEY)
-    .enableFeature(google.picker.Feature.MULTISELECT_ENABLED)
-    .setCallback(pickerCallback)
-    .build();
-  currentPicker.setVisible(true);
+ var view=new google.picker.View(google.picker.ViewId.DOCS_IMAGES);
+ view.setParent(DRIVE_FOLDER_ID);
+ currentPicker=new google.picker.PickerBuilder()
+ .setTitle('家計簿スクショを選択（複数選択可）')
+ .addView(view)
+ .setOAuthToken(accessToken)
+ .setDeveloperKey(GOOGLE_API_KEY)
+ .enableFeature(google.picker.Feature.MULTISELECT_ENABLED)
+ .setCallback(pickerCallback)
+ .build();
+ currentPicker.setVisible(true);
 }
 
 var pickerCallbackDone=false;
 
 function pickerCallback(data){
-  if(pickerCallbackDone)return;
-  try{
-    var action=data[google.picker.Response.ACTION];
-    if(action===google.picker.Action.PICKED){
-      pickerCallbackDone=true;
-      if(currentPicker){currentPicker.setVisible(false);currentPicker=null;}
-      var docs=data[google.picker.Response.DOCUMENTS]||[];
-      docs.forEach(function(f){
-        var id=f[google.picker.Document.ID];
-        if(!selectedFiles.some(function(sf){return sf.id===id;})){
-          selectedFiles.push({id:id,name:f[google.picker.Document.NAME]});
-        }
-      });
-      photoFile=null;
-      document.getElementById('photoInput').value='';
-      renderSelectedFiles();
-    } else if(action===google.picker.Action.CANCEL){
-      if(currentPicker){currentPicker.setVisible(false);currentPicker=null;}
-    }
-  }catch(err){
-    showError('photoError','Picker エラー: '+err.message);
-  }
+ if(pickerCallbackDone)return;
+ try{
+ var action=data[google.picker.Response.ACTION];
+ if(action===google.picker.Action.PICKED){
+ pickerCallbackDone=true;
+ if(currentPicker){currentPicker.setVisible(false);currentPicker=null;}
+ var docs=data[google.picker.Response.DOCUMENTS]||[];
+ docs.forEach(function(f){
+ var id=f[google.picker.Document.ID];
+ if(!selectedFiles.some(function(sf){return sf.id===id;})){
+ selectedFiles.push({id:id,name:f[google.picker.Document.NAME]});
+ }
+ });
+ photoFile=null;
+ document.getElementById('photoInput').value='';
+ renderSelectedFiles();
+ } else if(action===google.picker.Action.CANCEL){
+ if(currentPicker){currentPicker.setVisible(false);currentPicker=null;}
+ }
+ }catch(err){
+ showError('photoError','Picker エラー: '+err.message);
+ }
 }
 
 function renderSelectedFiles(){
-  var box=document.getElementById('photoFileList');
-  if(!selectedFiles.length){
-    box.innerHTML='';
-    if(!photoFile)document.getElementById('photoAnalyzeBtn').classList.remove('show');
-    return;
-  }
-  box.innerHTML=selectedFiles.map(function(f,i){
-    return '<div class="preview-row show">'+
-      '<img class="thumb" id="thumb_'+f.id+'" alt="" onclick="openFullImage(\''+f.id+'\')">'+
-      '<span>📎</span><span class="name">'+escapeHtml(f.name)+'</span>'+
-      '<button onclick="removeSelectedFile('+i+')">✕</button></div>';
-  }).join('');
-  document.getElementById('photoAnalyzeBtn').classList.add('show');
-  selectedFiles.forEach(function(f){
-    loadPhotoImage(f.id).then(function(url){
-      var img=document.getElementById('thumb_'+f.id);
-      if(img){img.src=url;img.style.display='block';}
-    }).catch(function(e){
-      showError('photoError','サムネイル読み込みエラー('+f.name+'): '+e.message);
-    });
-  });
+ var box=document.getElementById('photoFileList');
+ if(!selectedFiles.length){
+ box.innerHTML='';
+ if(!photoFile)document.getElementById('photoAnalyzeBtn').classList.remove('show');
+ return;
+ }
+ box.innerHTML=selectedFiles.map(function(f,i){
+ return '<div class="preview-row show">'+
+ '<img class="thumb" id="thumb_'+f.id+'" alt="" onclick="openFullImage(\''+f.id+'\')">'+
+ '<span>📎</span><span class="name">'+escapeHtml(f.name)+'</span>'+
+ '<button onclick="removeSelectedFile('+i+')">✕</button></div>';
+ }).join('');
+ document.getElementById('photoAnalyzeBtn').classList.add('show');
+ selectedFiles.forEach(function(f){
+ loadPhotoImage(f.id).then(function(url){
+ var img=document.getElementById('thumb_'+f.id);
+ if(img){img.src=url;img.style.display='block';}
+ }).catch(function(e){
+ showError('photoError','サムネイル読み込みエラー('+f.name+'): '+e.message);
+ });
+ });
 }
 
 function removeSelectedFile(idx){
-  selectedFiles.splice(idx,1);
-  renderSelectedFiles();
+ selectedFiles.splice(idx,1);
+ renderSelectedFiles();
 }
 
 // GAS経由（JSONP）で元画像をdata URLとして取得し、サムネイル表示＆タップで原寸表示（別タブ）
@@ -481,386 +507,395 @@ function removeSelectedFile(idx){
 // これにより、Gemini/Vision側の読み取りミス（文字化けした銘柄名など）をユーザーが
 // 元のスクショと見比べて確認・手直しできる。
 function loadPhotoImage(id){
-  if(photoImageUrls[id])return Promise.resolve(photoImageUrls[id]);
-  return new Promise(function(resolve,reject){
-    var cb='previewCallback_'+Date.now()+'_'+Math.floor(Math.random()*10000);
-    var s=document.createElement('script');
-    var timer=setTimeout(function(){
-      delete window[cb];
-      if(s.parentNode)s.parentNode.removeChild(s);
-      reject(new Error('タイムアウト（30秒）'));
-    },30000);
-    window[cb]=function(data){
-      clearTimeout(timer);
-      delete window[cb];
-      if(s.parentNode)s.parentNode.removeChild(s);
-      if(data&&data.success&&data.dataUrl){
-        photoImageUrls[id]=data.dataUrl;
-        resolve(data.dataUrl);
-      }else{
-        reject(new Error((data&&data.message)||'画像取得失敗'));
-      }
-    };
-    s.src=GAS_URL+'?previewFileId='+encodeURIComponent(id)+'&callback='+cb;
-    s.onerror=function(){
-      clearTimeout(timer);
-      delete window[cb];
-      if(s.parentNode)s.parentNode.removeChild(s);
-      reject(new Error('通信エラー'));
-    };
-    document.body.appendChild(s);
-  });
+ if(photoImageUrls[id])return Promise.resolve(photoImageUrls[id]);
+ return new Promise(function(resolve,reject){
+ var cb='previewCallback_'+Date.now()+'_'+Math.floor(Math.random()*10000);
+ var s=document.createElement('script');
+ var timer=setTimeout(function(){
+ delete window[cb];
+ if(s.parentNode)s.parentNode.removeChild(s);
+ reject(new Error('タイムアウト（30秒）'));
+ },30000);
+ window[cb]=function(data){
+ clearTimeout(timer);
+ delete window[cb];
+ if(s.parentNode)s.parentNode.removeChild(s);
+ if(data&&data.success&&data.dataUrl){
+ photoImageUrls[id]=data.dataUrl;
+ resolve(data.dataUrl);
+ }else{
+ reject(new Error((data&&data.message)||'画像取得失敗'));
+ }
+ };
+ s.src=GAS_URL+'?previewFileId='+encodeURIComponent(id)+'&callback='+cb;
+ s.onerror=function(){
+ clearTimeout(timer);
+ delete window[cb];
+ if(s.parentNode)s.parentNode.removeChild(s);
+ reject(new Error('通信エラー'));
+ };
+ document.body.appendChild(s);
+ });
 }
 
 function openFullImage(id){
-  loadPhotoImage(id).then(function(dataUrl){
-    // data:URLへの直接ナビゲーション(window.open)はブラウザにブロックされる場合があるため、
-    // 一度blobに変換してobject URLを開く
-    return fetch(dataUrl).then(function(r){return r.blob();});
-  }).then(function(blob){
-    var url=URL.createObjectURL(blob);
-    window.open(url,'_blank');
-  }).catch(function(e){
-    showError('photoError','画像を開けませんでした: '+e.message);
-  });
+ loadPhotoImage(id).then(function(dataUrl){
+ // data:URLへの直接ナビゲーション(window.open)はブラウザにブロックされる場合があるため、
+ // 一度blobに変換してobject URLを開く
+ return fetch(dataUrl).then(function(r){return r.blob();});
+ }).then(function(blob){
+ var url=URL.createObjectURL(blob);
+ window.open(url,'_blank');
+ }).catch(function(e){
+ showError('photoError','画像を開けませんでした: '+e.message);
+ });
 }
 
 function copyRawText(){
-  var txt=document.getElementById('rawText').textContent;
-  var btn=document.getElementById('copyRawTextBtn');
-  var done=function(){
-    var orig=btn.textContent;
-    btn.textContent='✅ コピーしました';
-    setTimeout(function(){btn.textContent=orig;},1500);
-  };
-  if(navigator.clipboard&&navigator.clipboard.writeText){
-    navigator.clipboard.writeText(txt).then(done).catch(function(){
-      alert('コピーに失敗しました。テキストを長押し（または選択）して手動でコピーしてください。');
-    });
-  }else{
-    alert('このブラウザは自動コピーに対応していません。テキストを長押し（または選択）して手動でコピーしてください。');
-  }
+ var txt=document.getElementById('rawText').textContent;
+ var btn=document.getElementById('copyRawTextBtn');
+ var done=function(){
+ var orig=btn.textContent;
+ btn.textContent='✅ コピーしました';
+ setTimeout(function(){btn.textContent=orig;},1500);
+ };
+ if(navigator.clipboard&&navigator.clipboard.writeText){
+ navigator.clipboard.writeText(txt).then(done).catch(function(){
+ alert('コピーに失敗しました。テキストを長押し（または選択）して手動でコピーしてください。');
+ });
+ }else{
+ alert('このブラウザは自動コピーに対応していません。テキストを長押し（または選択）して手動でコピーしてください。');
+ }
 }
 
 document.getElementById('photoInput').addEventListener('change',function(e){
-  if(e.target.files[0]){
-    photoFile=e.target.files[0];
-    selectedFiles=[];
-    document.getElementById('photoFileList').innerHTML='';
-    document.getElementById('photoName').textContent=photoFile.name;
-    document.getElementById('photoPreview').classList.add('show');
-    document.getElementById('photoAnalyzeBtn').classList.add('show');
-  }
+ if(e.target.files[0]){
+ photoFile=e.target.files[0];
+ selectedFiles=[];
+ document.getElementById('photoFileList').innerHTML='';
+ document.getElementById('photoName').textContent=photoFile.name;
+ document.getElementById('photoPreview').classList.add('show');
+ document.getElementById('photoAnalyzeBtn').classList.add('show');
+ }
 });
 
 function clearPhoto(){
-  photoFile=null;
-  selectedFiles=[];
-  photoImageUrls={};
-  document.getElementById('photoInput').value='';
-  document.getElementById('photoFileList').innerHTML='';
-  ['photoPreview','photoAnalyzeBtn','photoReview','photoConfirmBtn','rawText','rawTextCopyWrap','photoSecuritiesReview','photoSecuritiesConfirmBtn','photoIdecoReview','photoIdecoConfirmBtn'].forEach(function(id){
-    document.getElementById(id).classList.remove('show');
-  });
+ photoFile=null;
+ selectedFiles=[];
+ photoImageUrls={};
+ document.getElementById('photoInput').value='';
+ document.getElementById('photoFileList').innerHTML='';
+ ['photoPreview','photoAnalyzeBtn','photoReview','photoConfirmBtn','rawText','rawTextCopyWrap','photoSecuritiesReview','photoSecuritiesConfirmBtn','photoIdecoReview','photoIdecoConfirmBtn'].forEach(function(id){
+ document.getElementById(id).classList.remove('show');
+ });
 }
 
 async function analyzePhoto(){
-  if(!photoFile&&!selectedFiles.length){
-    showError('photoError','ファイルが選択されていません');
-    return;
-  }
-  if(!selectedFiles.length&&photoFile){
-    // 直接アップロードはfileIdなしのため、まずDriveにアップロードしてからfileIdで解析
-    showError('photoError','直接アップロードはドライブ経由のみ対応しています。「📂 家計簿スクショから選択」をご利用ください（複数選択も可能です）。');
-    return;
-  }
-  document.getElementById('photoAnalyzeBtn').disabled=true;
-  document.getElementById('photoError').classList.remove('show');
-  document.getElementById('rawText').classList.remove('show');
-  var total=selectedFiles.length;
-  var loadingEl=document.getElementById('photoLoading');
-  var completed=0;
-  loadingEl.classList.add('show');
-  loadingEl.innerHTML='<div class="spinner-sm"></div>GAS経由で解析中... (0/'+total+'件)';
+ if(!photoFile&&!selectedFiles.length){
+ showError('photoError','ファイルが選択されていません');
+ return;
+ }
+ if(!selectedFiles.length&&photoFile){
+ // 直接アップロードはfileIdなしのため、まずDriveにアップロードしてからfileIdで解析
+ showError('photoError','直接アップロードはドライブ経由のみ対応しています。「📂 家計簿スクショから選択」をご利用ください（複数選択も可能です）。');
+ return;
+ }
+ document.getElementById('photoAnalyzeBtn').disabled=true;
+ document.getElementById('photoError').classList.remove('show');
+ document.getElementById('rawText').classList.remove('show');
+ var total=selectedFiles.length;
+ var loadingEl=document.getElementById('photoLoading');
+ var completed=0;
+ loadingEl.classList.add('show');
+ loadingEl.innerHTML='<div class="spinner-sm"></div>GAS経由で解析中... (0/'+total+'件)';
 
-  // Gemini/Vision APIが同時多重リクエストに弱く、並列実行すると詰まって
-  // 全件タイムアウトすることがあるため、1枚ずつ順番に解析する
-  var settled=[];
-  for(var fi=0; fi<selectedFiles.length; fi++){
-    var f=selectedFiles[fi];
-    loadingEl.innerHTML='<div class="spinner-sm"></div>GAS経由で解析中... ('+completed+'/'+total+'件: '+escapeHtml(f.name)+')';
-    try{
-      var r=await analyzeByFileId(f.id);
-      completed++;
-      settled.push({status:'fulfilled',value:{file:f,result:r}});
-    }catch(e){
-      completed++;
-      settled.push({status:'rejected',reason:e});
-    }
-    loadingEl.innerHTML='<div class="spinner-sm"></div>GAS経由で解析中... ('+completed+'/'+total+'件)';
-  }
+ // Gemini/Vision APIが同時多重リクエストに弱く、並列実行すると詰まって
+ // 全件タイムアウトすることがあるため、1枚ずつ順番に解析する
+ var settled=[];
+ for(var fi=0; fi<selectedFiles.length; fi++){
+ var f=selectedFiles[fi];
+ loadingEl.innerHTML='<div class="spinner-sm"></div>GAS経由で解析中... ('+completed+'/'+total+'件: '+escapeHtml(f.name)+')';
+ try{
+ var r=await analyzeByFileId(f.id);
+ completed++;
+ settled.push({status:'fulfilled',value:{file:f,result:r}});
+ }catch(e){
+ completed++;
+ settled.push({status:'rejected',reason:e});
+ }
+ loadingEl.innerHTML='<div class="spinner-sm"></div>GAS経由で解析中... ('+completed+'/'+total+'件)';
+ }
 
-  loadingEl.classList.remove('show');
+ loadingEl.classList.remove('show');
 
-  var allEntries=[],allHoldings=[],allIdecoList=[],rawTexts=[],errors=[];
-  settled.forEach(function(r,i){
-    if(r.status==='fulfilled'){
-      var data=r.value.result;
-      var name=r.value.file.name;
-      if(data.rawText)rawTexts.push('['+name+']\n'+data.rawText);
-      var type=data.type||'transactions';
-      if(type==='securities'){
-        if(data.holdings&&data.holdings.length)allHoldings=allHoldings.concat(data.holdings);
-        else errors.push(name+': 証券銘柄を検出できませんでした。');
-      }else if(type==='ideco'){
-        allIdecoList.push(data.ideco||{balance:0,contribution:0});
-      }else if(type==='unknown'){
-        errors.push(name+': 画面の種類を判定できませんでした。');
-      }else{
-        if(data.entries&&data.entries.length)allEntries=allEntries.concat(data.entries);
-        else errors.push(name+': 明細を検出できませんでした。');
-      }
-    }else{
-      errors.push(selectedFiles[i].name+': エラー ('+((r.reason&&r.reason.message)||'解析失敗')+')');
-    }
-  });
+ var allEntries=[],allHoldings=[],allIdecoList=[],rawTexts=[],errors=[];
+ settled.forEach(function(r,i){
+ if(r.status==='fulfilled'){
+ var data=r.value.result;
+ var file=r.value.file;
+ var name=file.name;
+ if(data.rawText)rawTexts.push('['+name+']\n'+data.rawText);
+ var type=data.type||'transactions';
+ if(type==='securities'){
+ if(data.holdings&&data.holdings.length){
+ data.holdings.forEach(function(h){h._fileId=file.id;});
+ allHoldings=allHoldings.concat(data.holdings);
+ }
+ else errors.push(name+': 証券銘柄を検出できませんでした。');
+ }else if(type==='ideco'){
+ var idecoItem=data.ideco||{balance:0,contribution:0};
+ idecoItem._fileId=file.id;
+ allIdecoList.push(idecoItem);
+ }else if(type==='unknown'){
+ errors.push(name+': 画面の種類を判定できませんでした。');
+ }else{
+ if(data.entries&&data.entries.length){
+ data.entries.forEach(function(en){en._fileId=file.id;});
+ allEntries=allEntries.concat(data.entries);
+ }
+ else errors.push(name+': 明細を検出できませんでした。');
+ }
+ }else{
+ errors.push(selectedFiles[i].name+': エラー ('+((r.reason&&r.reason.message)||'解析失敗')+')');
+ }
+ });
 
-  if(rawTexts.length){
-    document.getElementById('rawText').textContent='読み取ったテキスト:\n\n'+rawTexts.join('\n\n---\n\n');
-    document.getElementById('rawText').classList.add('show');
-    document.getElementById('rawTextCopyWrap').classList.add('show');
-  }
-  if(errors.length)showError('photoError',errors.join('\n'));
-  if(allEntries.length){reviewData.photo=allEntries;renderReview('photo');}
-  if(allHoldings.length){securitiesData=allHoldings;renderSecuritiesReview();}
-  if(allIdecoList.length){idecoDataList=allIdecoList;renderIdecoReview();}
+ if(rawTexts.length){
+ document.getElementById('rawText').textContent='読み取ったテキスト:\n\n'+rawTexts.join('\n\n---\n\n');
+ document.getElementById('rawText').classList.add('show');
+ document.getElementById('rawTextCopyWrap').classList.add('show');
+ }
+ if(errors.length)showError('photoError',errors.join('\n'));
+ if(allEntries.length){reviewData.photo=allEntries;renderReview('photo');}
+ if(allHoldings.length){securitiesData=allHoldings;renderSecuritiesReview();}
+ if(allIdecoList.length){idecoDataList=allIdecoList;renderIdecoReview();}
 
-  document.getElementById('photoAnalyzeBtn').disabled=false;
+ document.getElementById('photoAnalyzeBtn').disabled=false;
 }
 
 document.getElementById('csvInput').addEventListener('change',function(e){
-  if(e.target.files[0]){
-    csvFile=e.target.files[0];
-    document.getElementById('csvName').textContent=csvFile.name;
-    document.getElementById('csvPreview').classList.add('show');
-    document.getElementById('csvAnalyzeBtn').classList.add('show');
-  }
+ if(e.target.files[0]){
+ csvFile=e.target.files[0];
+ document.getElementById('csvName').textContent=csvFile.name;
+ document.getElementById('csvPreview').classList.add('show');
+ document.getElementById('csvAnalyzeBtn').classList.add('show');
+ }
 });
 
 function clearCSV(){
-  csvFile=null;
-  document.getElementById('csvInput').value='';
-  ['csvPreview','csvAnalyzeBtn','csvReview','csvConfirmBtn'].forEach(function(id){
-    document.getElementById(id).classList.remove('show');
-  });
+ csvFile=null;
+ document.getElementById('csvInput').value='';
+ ['csvPreview','csvAnalyzeBtn','csvReview','csvConfirmBtn'].forEach(function(id){
+ document.getElementById(id).classList.remove('show');
+ });
 }
 
 async function analyzeCSV(){
-  if(!csvFile)return;
-  document.getElementById('csvAnalyzeBtn').disabled=true;
-  document.getElementById('csvLoading').classList.add('show');
-  document.getElementById('csvError').classList.remove('show');
-  try{
-    var text=await readCSVText(csvFile);
-    var cb='csvCallback_'+Date.now();
-    var result=await new Promise(function(resolve,reject){
-      var s=document.createElement('script');
-      var timer=setTimeout(function(){
-        delete window[cb];
-        if(s.parentNode)s.parentNode.removeChild(s);
-        reject(new Error('タイムアウト（30秒）'));
-      },30000);
-      window[cb]=function(data){
-        clearTimeout(timer);
-        delete window[cb];
-        if(s.parentNode)s.parentNode.removeChild(s);
-        if(data&&data.success){resolve(data);}
-        else{reject(new Error((data&&data.message)||'解析失敗'));}
-      };
-      var base64=btoa(unescape(encodeURIComponent(text)));
-      s.src=GAS_URL+'?csv='+encodeURIComponent(base64)+'&callback='+cb;
-      s.onerror=function(){
-        clearTimeout(timer);
-        delete window[cb];
-        if(s.parentNode)s.parentNode.removeChild(s);
-        reject(new Error('通信エラー'));
-      };
-      document.body.appendChild(s);
-    });
-    document.getElementById('csvLoading').classList.remove('show');
-    reviewData.csv=result.entries||[];
-    if(!reviewData.csv.length){showError('csvError','取引データが見つかりませんでした。');}
-    else{renderReview('csv');}
-  }catch(e){
-    document.getElementById('csvLoading').classList.remove('show');
-    showError('csvError','エラー: '+e.message);
-  }
-  document.getElementById('csvAnalyzeBtn').disabled=false;
+ if(!csvFile)return;
+ document.getElementById('csvAnalyzeBtn').disabled=true;
+ document.getElementById('csvLoading').classList.add('show');
+ document.getElementById('csvError').classList.remove('show');
+ try{
+ var text=await readCSVText(csvFile);
+ var cb='csvCallback_'+Date.now();
+ var result=await new Promise(function(resolve,reject){
+ var s=document.createElement('script');
+ var timer=setTimeout(function(){
+ delete window[cb];
+ if(s.parentNode)s.parentNode.removeChild(s);
+ reject(new Error('タイムアウト（30秒）'));
+ },30000);
+ window[cb]=function(data){
+ clearTimeout(timer);
+ delete window[cb];
+ if(s.parentNode)s.parentNode.removeChild(s);
+ if(data&&data.success){resolve(data);}
+ else{reject(new Error((data&&data.message)||'解析失敗'));}
+ };
+ var base64=btoa(unescape(encodeURIComponent(text)));
+ s.src=GAS_URL+'?csv='+encodeURIComponent(base64)+'&callback='+cb;
+ s.onerror=function(){
+ clearTimeout(timer);
+ delete window[cb];
+ if(s.parentNode)s.parentNode.removeChild(s);
+ reject(new Error('通信エラー'));
+ };
+ document.body.appendChild(s);
+ });
+ document.getElementById('csvLoading').classList.remove('show');
+ reviewData.csv=result.entries||[];
+ if(!reviewData.csv.length){showError('csvError','取引データが見つかりませんでした。');}
+ else{renderReview('csv');}
+ }catch(e){
+ document.getElementById('csvLoading').classList.remove('show');
+ showError('csvError','エラー: '+e.message);
+ }
+ document.getElementById('csvAnalyzeBtn').disabled=false;
 }
 
 function renderReview(kind){
-  var allCats=CATEGORIES.expense.concat(CATEGORIES.income);
-  document.getElementById(kind+'Review').innerHTML=reviewData[kind].map(function(e,i){
-    return '<div class="review-item">'+
-      '<input type="date" value="'+e.date+'" onchange="reviewData[\''+kind+'\']['+i+'].date=this.value" style="width:110px">'+
-      '<input type="text" class="desc-input" value="'+escapeAttr(e.description)+'" onchange="reviewData[\''+kind+'\']['+i+'].description=this.value">'+
-      '<select onchange="reviewData[\''+kind+'\']['+i+'].category=this.value">'+
-        allCats.map(function(c){return '<option'+(e.category===c?' selected':'')+'>'+c+'</option>';}).join('')+
-      '</select>'+
-      '<input type="number" class="amt-input" value="'+e.amount+'" onchange="reviewData[\''+kind+'\']['+i+'].amount=Number(this.value)">'+
-      '<select onchange="reviewData[\''+kind+'\']['+i+'].source=this.value">'+
-        '<option value="bank"'+(e.source!=='card'?' selected':'')+'>銀行</option>'+
-        '<option value="card"'+(e.source==='card'?' selected':'')+'>カード</option>'+
-      '</select>'+
-      '<button class="remove-btn" onclick="removeReviewItem(\''+kind+'\','+i+')">✕</button>'+
-    '</div>';
-  }).join('');
-  document.getElementById(kind+'Review').classList.add('show');
-  document.getElementById(kind+'ConfirmBtn').classList.add('show');
+ var allCats=CATEGORIES.expense.concat(CATEGORIES.income);
+ document.getElementById(kind+'Review').innerHTML=reviewData[kind].map(function(e,i){
+ return '<div class="review-item">'+
+ '<input type="date" value="'+e.date+'" onchange="reviewData[\''+kind+'\']['+i+'].date=this.value" style="width:110px">'+
+ '<input type="text" class="desc-input" value="'+escapeAttr(e.description)+'" onchange="reviewData[\''+kind+'\']['+i+'].description=this.value">'+
+ '<select onchange="reviewData[\''+kind+'\']['+i+'].category=this.value">'+
+ allCats.map(function(c){return '<option'+(e.category===c?' selected':'')+'>'+c+'</option>';}).join('')+
+ '</select>'+
+ '<input type="number" class="amt-input" value="'+e.amount+'" onchange="reviewData[\''+kind+'\']['+i+'].amount=Number(this.value)">'+
+ '<select onchange="reviewData[\''+kind+'\']['+i+'].source=this.value">'+
+ '<option value="bank"'+(e.source!=='card'?' selected':'')+'>銀行</option>'+
+ '<option value="card"'+(e.source==='card'?' selected':'')+'>カード</option>'+
+ '</select>'+
+ '<button class="remove-btn" onclick="removeReviewItem(\''+kind+'\','+i+')">✕</button>'+
+ '</div>';
+ }).join('');
+ document.getElementById(kind+'Review').classList.add('show');
+ document.getElementById(kind+'ConfirmBtn').classList.add('show');
 }
 
 function removeReviewItem(kind,idx){
-  reviewData[kind].splice(idx,1);
-  renderReview(kind);
+ reviewData[kind].splice(idx,1);
+ renderReview(kind);
 }
 
 async function confirmReview(kind){
-  var btn=document.getElementById(kind+'ConfirmBtn');
-  var ok=document.getElementById(kind+'Success');
-  btn.disabled=true;
-  try{
-    await sendToSheet(reviewData[kind]);
-    ok.textContent='✅ '+reviewData[kind].length+'件を送信しました';
-    ok.classList.add('show');
-    addToRecent(reviewData[kind]);
-    reviewData[kind]=[];
-    document.getElementById(kind+'Review').classList.remove('show');
-    btn.classList.remove('show');
-    if(kind==='photo')clearPhoto();
-    if(kind==='csv')clearCSV();
-  }catch(e){showError(kind+'Error','エラー: '+e.message);}
-  btn.disabled=false;
+ var btn=document.getElementById(kind+'ConfirmBtn');
+ var ok=document.getElementById(kind+'Success');
+ btn.disabled=true;
+ try{
+ await sendToSheet(reviewData[kind]);
+ ok.textContent='✅ '+reviewData[kind].length+'件を送信しました';
+ ok.classList.add('show');
+ addToRecent(reviewData[kind]);
+ reviewData[kind]=[];
+ document.getElementById(kind+'Review').classList.remove('show');
+ btn.classList.remove('show');
+ if(kind==='photo')clearPhoto();
+ if(kind==='csv')clearCSV();
+ }catch(e){showError(kind+'Error','エラー: '+e.message);}
+ btn.disabled=false;
 }
 
 function renderSecuritiesReview(){
-  document.getElementById('photoSecuritiesReview').innerHTML=securitiesData.map(function(h,i){
-    return '<div class="review-item">'+
-      '<input type="text" class="sec-input name" value="'+escapeAttr(h.company||'')+'" placeholder="証券会社" onchange="securitiesData['+i+'].company=this.value">'+
-      '<input type="text" class="sec-input name" value="'+escapeAttr(h.name||'')+'" placeholder="銘柄名" onchange="securitiesData['+i+'].name=this.value">'+
-      '<input type="number" class="sec-input" value="'+(h.investment||0)+'" placeholder="取得金額" onchange="securitiesData['+i+'].investment=Number(this.value)">'+
-      '<input type="number" class="sec-input" value="'+(h.current_value||0)+'" placeholder="評価額" onchange="securitiesData['+i+'].current_value=Number(this.value)">'+
-      '<input type="number" class="sec-input" value="'+(h.unrealized_gain||0)+'" placeholder="評価損益" onchange="securitiesData['+i+'].unrealized_gain=Number(this.value)">'+
-      '<input type="number" class="sec-input" value="'+(h.return_rate||0)+'" placeholder="騰落率%" onchange="securitiesData['+i+'].return_rate=Number(this.value)">'+
-      '<button class="remove-btn" onclick="removeSecuritiesItem('+i+')">✕</button>'+
-    '</div>';
-  }).join('');
-  document.getElementById('photoSecuritiesReview').classList.add('show');
-  document.getElementById('photoSecuritiesConfirmBtn').classList.add('show');
+ document.getElementById('photoSecuritiesReview').innerHTML=securitiesData.map(function(h,i){
+ return '<div class="review-item">'+
+ '<input type="text" class="sec-input name" value="'+escapeAttr(h.company||'')+'" placeholder="証券会社" onchange="securitiesData['+i+'].company=this.value">'+
+ '<input type="text" class="sec-input name" value="'+escapeAttr(h.name||'')+'" placeholder="銘柄名" onchange="securitiesData['+i+'].name=this.value">'+
+ '<input type="number" class="sec-input" value="'+(h.investment||0)+'" placeholder="取得金額" onchange="securitiesData['+i+'].investment=Number(this.value)">'+
+ '<input type="number" class="sec-input" value="'+(h.current_value||0)+'" placeholder="評価額" onchange="securitiesData['+i+'].current_value=Number(this.value)">'+
+ '<input type="number" class="sec-input" value="'+(h.unrealized_gain||0)+'" placeholder="評価損益" onchange="securitiesData['+i+'].unrealized_gain=Number(this.value)">'+
+ '<input type="number" class="sec-input" value="'+(h.return_rate||0)+'" placeholder="騰落率%" onchange="securitiesData['+i+'].return_rate=Number(this.value)">'+
+ '<button class="remove-btn" onclick="removeSecuritiesItem('+i+')">✕</button>'+
+ '</div>';
+ }).join('');
+ document.getElementById('photoSecuritiesReview').classList.add('show');
+ document.getElementById('photoSecuritiesConfirmBtn').classList.add('show');
 }
 
 function removeSecuritiesItem(idx){
-  securitiesData.splice(idx,1);
-  renderSecuritiesReview();
+ securitiesData.splice(idx,1);
+ renderSecuritiesReview();
 }
 
 async function confirmSecurities(){
-  var btn=document.getElementById('photoSecuritiesConfirmBtn');
-  var ok=document.getElementById('photoSecuritiesSuccess');
-  btn.disabled=true;
-  try{
-    await sendHoldingsToSheet(securitiesData);
-    ok.textContent='✅ '+securitiesData.length+'件の証券データを保存しました';
-    ok.classList.add('show');
-    securitiesData=[];
-    document.getElementById('photoSecuritiesReview').classList.remove('show');
-    btn.classList.remove('show');
-    clearPhoto();
-  }catch(e){showError('photoError','エラー: '+e.message);}
-  btn.disabled=false;
+ var btn=document.getElementById('photoSecuritiesConfirmBtn');
+ var ok=document.getElementById('photoSecuritiesSuccess');
+ btn.disabled=true;
+ try{
+ await sendHoldingsToSheet(securitiesData);
+ ok.textContent='✅ '+securitiesData.length+'件の証券データを保存しました';
+ ok.classList.add('show');
+ securitiesData=[];
+ document.getElementById('photoSecuritiesReview').classList.remove('show');
+ btn.classList.remove('show');
+ clearPhoto();
+ }catch(e){showError('photoError','エラー: '+e.message);}
+ btn.disabled=false;
 }
 
 function renderIdecoReview(){
-  document.getElementById('photoIdecoReview').innerHTML=idecoDataList.map(function(d,i){
-    return '<div class="review-item" style="flex-direction:column;align-items:stretch">'+
-      '<div class="ideco-field"><label>資産残高（円）'+(idecoDataList.length>1?' #'+(i+1):'')+'</label><input type="number" value="'+(d.balance||0)+'" onchange="idecoDataList['+i+'].balance=Number(this.value)"></div>'+
-      '<div class="ideco-field"><label>掛金（円・任意）</label><input type="number" value="'+(d.contribution||0)+'" onchange="idecoDataList['+i+'].contribution=Number(this.value)"></div>'+
-    '</div>';
-  }).join('');
-  document.getElementById('photoIdecoReview').classList.add('show');
-  document.getElementById('photoIdecoConfirmBtn').classList.add('show');
+ document.getElementById('photoIdecoReview').innerHTML=idecoDataList.map(function(d,i){
+ return '<div class="review-item" style="flex-direction:column;align-items:stretch">'+
+ '<div class="ideco-field"><label>資産残高（円）'+(idecoDataList.length>1?' #'+(i+1):'')+'</label><input type="number" value="'+(d.balance||0)+'" onchange="idecoDataList['+i+'].balance=Number(this.value)"></div>'+
+ '<div class="ideco-field"><label>掛金（円・任意）</label><input type="number" value="'+(d.contribution||0)+'" onchange="idecoDataList['+i+'].contribution=Number(this.value)"></div>'+
+ '</div>';
+ }).join('');
+ document.getElementById('photoIdecoReview').classList.add('show');
+ document.getElementById('photoIdecoConfirmBtn').classList.add('show');
 }
 
 async function confirmIdeco(){
-  var btn=document.getElementById('photoIdecoConfirmBtn');
-  var ok=document.getElementById('photoIdecoSuccess');
-  btn.disabled=true;
-  try{
-    for(var i=0;i<idecoDataList.length;i++){
-      await sendIdecoToSheet(idecoDataList[i]);
-    }
-    ok.textContent='✅ iDeCo残高を'+idecoDataList.length+'件保存しました';
-    ok.classList.add('show');
-    idecoDataList=[];
-    document.getElementById('photoIdecoReview').classList.remove('show');
-    btn.classList.remove('show');
-    clearPhoto();
-  }catch(e){showError('photoError','エラー: '+e.message);}
-  btn.disabled=false;
+ var btn=document.getElementById('photoIdecoConfirmBtn');
+ var ok=document.getElementById('photoIdecoSuccess');
+ btn.disabled=true;
+ try{
+ for(var i=0;i<idecoDataList.length;i++){
+ await sendIdecoToSheet(idecoDataList[i]);
+ }
+ ok.textContent='✅ iDeCo残高を'+idecoDataList.length+'件保存しました';
+ ok.classList.add('show');
+ idecoDataList=[];
+ document.getElementById('photoIdecoReview').classList.remove('show');
+ btn.classList.remove('show');
+ clearPhoto();
+ }catch(e){showError('photoError','エラー: '+e.message);}
+ btn.disabled=false;
 }
 
 function addToRecent(entries){
-  entries.forEach(function(e){recentEntries.unshift(e);});
-  recentEntries=recentEntries.slice(0,10);
-  renderRecent();
+ entries.forEach(function(e){recentEntries.unshift(e);});
+ recentEntries=recentEntries.slice(0,10);
+ renderRecent();
 }
 
 function renderRecent(){
-  if(!recentEntries.length)return;
-  document.getElementById('recentSection').style.display='block';
-  document.getElementById('recentList').innerHTML=recentEntries.map(function(e){
-    return '<div class="recent-item">'+
-      '<div class="recent-dot" style="background:'+(CATEGORY_COLORS[e.category]||'#999')+'"></div>'+
-      '<div class="recent-info">'+
-        '<div class="recent-desc">'+escapeHtml(e.description)+'</div>'+
-        '<div class="recent-meta">'+e.date+' ・ '+e.category+(e.source==='card'?' ・ 💳カード':' ・ 🏦銀行')+'</div>'+
-      '</div>'+
-      '<div class="recent-amt '+e.type+'">'+(e.type==='income'?'+':'-')+'¥'+Number(e.amount).toLocaleString()+'</div>'+
-    '</div>';
-  }).join('');
+ if(!recentEntries.length)return;
+ document.getElementById('recentSection').style.display='block';
+ document.getElementById('recentList').innerHTML=recentEntries.map(function(e){
+ return '<div class="recent-item">'+
+ '<div class="recent-dot" style="background:'+(CATEGORY_COLORS[e.category]||'#999')+'"></div>'+
+ '<div class="recent-info">'+
+ '<div class="recent-desc">'+escapeHtml(e.description)+'</div>'+
+ '<div class="recent-meta">'+e.date+' ・ '+e.category+(e.source==='card'?' ・ 💳カード':' ・ 🏦銀行')+'</div>'+
+ '</div>'+
+ '<div class="recent-amt '+e.type+'">'+(e.type==='income'?'+':'-')+'¥'+Number(e.amount).toLocaleString()+'</div>'+
+ '</div>';
+ }).join('');
 }
 
 function showError(id,msg){
-  var el=document.getElementById(id);
-  el.textContent=msg;
-  el.classList.add('show');
+ var el=document.getElementById(id);
+ el.textContent=msg;
+ el.classList.add('show');
 }
 
 function escapeHtml(str){
-  var d=document.createElement('div');
-  d.textContent=str;
-  return d.innerHTML;
+ var d=document.createElement('div');
+ d.textContent=str;
+ return d.innerHTML;
 }
 
 function escapeAttr(str){
-  return String(str).replace(/"/g,'&quot;');
+ return String(str).replace(/"/g,'&quot;');
 }
 
 function fileToBase64(file){
-  return new Promise(function(resolve,reject){
-    var r=new FileReader();
-    r.onload=function(){resolve(r.result.split(',')[1]);};
-    r.onerror=reject;
-    r.readAsDataURL(file);
-  });
+ return new Promise(function(resolve,reject){
+ var r=new FileReader();
+ r.onload=function(){resolve(r.result.split(',')[1]);};
+ r.onerror=reject;
+ r.readAsDataURL(file);
+ });
 }
 
 function readCSVText(file){
-  return new Promise(function(resolve,reject){
-    var r=new FileReader();
-    r.onload=function(e){resolve(e.target.result);};
-    r.onerror=reject;
-    r.readAsText(file,'Shift_JIS');
-  });
+ return new Promise(function(resolve,reject){
+ var r=new FileReader();
+ r.onload=function(e){resolve(e.target.result);};
+ r.onerror=reject;
+ r.readAsText(file,'Shift_JIS');
+ });
 }
 
 init();
