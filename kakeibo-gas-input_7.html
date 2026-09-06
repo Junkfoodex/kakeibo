@@ -159,6 +159,9 @@ select.csv-bank{width:100%;background:var(--paper);color:var(--ink);border:none;
  <div class="review-list" id="photoIdecoReview"></div>
  <button class="btn-confirm-all" id="photoIdecoConfirmBtn" onclick="confirmIdeco()">iDeCo残高を保存</button>
  <div class="success-msg" id="photoIdecoSuccess"></div>
+ <div class="review-list" id="photoBankBalanceReview"></div>
+ <button class="btn-confirm-all" id="photoBankBalanceConfirmBtn" onclick="confirmBankBalance()">口座残高を保存</button>
+ <div class="success-msg" id="photoBankBalanceSuccess"></div>
  </div>
  <div class="input-panel" id="panel-csv">
  <select class="csv-bank" id="csvBank">
@@ -205,7 +208,7 @@ var GOOGLE_API_KEY='AIzaSyACUoVTzF-p11tpirudJzqBjEJ3mxZBLmQ';
 var GOOGLE_CLIENT_ID='958314442221-jqh28oakgll8goaih2r5cqmvd070k3im.apps.googleusercontent.com';
 var DRIVE_FOLDER_ID='1B2mAntpJJV3sCKza08r_LZ4VqC2BwlxQ';
 var manualType='expense',photoFile=null,selectedFiles=[],csvFile=null,reviewData={photo:[],csv:[]},recentEntries=[],accessToken=null;
-var securitiesData=[],idecoDataList=[],currentSheetName=null;
+var securitiesData=[],idecoDataList=[],bankBalanceDataList=[],currentSheetName=null;
 var photoImageUrls={};
 var pickerInited=false;
 var pickerTimer=setInterval(function(){
@@ -341,6 +344,38 @@ function sendIdecoToSheet(ideco){
  else{reject(new Error((data&&data.message)||'保存失敗'));}
  };
  var url=GAS_URL+'?ideco='+encodeURIComponent(JSON.stringify(cleanIdeco))+'&callback='+cb;
+ if(currentSheetName)url+='&sheetName='+encodeURIComponent(currentSheetName);
+ if(moveFileIds.length)url+='&moveFileIds='+encodeURIComponent(JSON.stringify(moveFileIds));
+ s.src=url;
+ s.onerror=function(){
+ clearTimeout(timer);
+ delete window[cb];
+ if(s.parentNode)s.parentNode.removeChild(s);
+ reject(new Error('通信エラー'));
+ };
+ document.body.appendChild(s);
+ });
+}
+
+function sendBankBalanceToSheet(bb){
+ var moveFileIds=bb&&bb._fileId?[bb._fileId]:[];
+ var cleanData={bank:bb.bank,balance:bb.balance};
+ return new Promise(function(resolve,reject){
+ var cb='bankBalanceCallback_'+Date.now();
+ var s=document.createElement('script');
+ var timer=setTimeout(function(){
+ delete window[cb];
+ if(s.parentNode)s.parentNode.removeChild(s);
+ reject(new Error('タイムアウト（30秒）。処理は裏側で続いている可能性があるので、少し待ってからスプレッドシートを確認してください。'));
+ },30000);
+ window[cb]=function(data){
+ clearTimeout(timer);
+ delete window[cb];
+ if(s.parentNode)s.parentNode.removeChild(s);
+ if(data&&data.success){resolve(data);}
+ else{reject(new Error((data&&data.message)||'保存失敗'));}
+ };
+ var url=GAS_URL+'?bankBalance='+encodeURIComponent(JSON.stringify(cleanData))+'&callback='+cb;
  if(currentSheetName)url+='&sheetName='+encodeURIComponent(currentSheetName);
  if(moveFileIds.length)url+='&moveFileIds='+encodeURIComponent(JSON.stringify(moveFileIds));
  s.src=url;
@@ -585,7 +620,7 @@ function clearPhoto(){
  photoImageUrls={};
  document.getElementById('photoInput').value='';
  document.getElementById('photoFileList').innerHTML='';
- ['photoPreview','photoAnalyzeBtn','photoReview','photoConfirmBtn','rawText','rawTextCopyWrap','photoSecuritiesReview','photoSecuritiesConfirmBtn','photoIdecoReview','photoIdecoConfirmBtn'].forEach(function(id){
+ ['photoPreview','photoAnalyzeBtn','photoReview','photoConfirmBtn','rawText','rawTextCopyWrap','photoSecuritiesReview','photoSecuritiesConfirmBtn','photoIdecoReview','photoIdecoConfirmBtn','photoBankBalanceReview','photoBankBalanceConfirmBtn'].forEach(function(id){
  document.getElementById(id).classList.remove('show');
  });
 }
@@ -628,7 +663,7 @@ async function analyzePhoto(){
 
  loadingEl.classList.remove('show');
 
- var allEntries=[],allHoldings=[],allIdecoList=[],rawTexts=[],errors=[];
+ var allEntries=[],allHoldings=[],allIdecoList=[],allBankBalanceList=[],rawTexts=[],errors=[];
  settled.forEach(function(r,i){
  if(r.status==='fulfilled'){
  var data=r.value.result;
@@ -646,6 +681,10 @@ async function analyzePhoto(){
  var idecoItem=data.ideco||{balance:0,contribution:0};
  idecoItem._fileId=file.id;
  allIdecoList.push(idecoItem);
+ }else if(type==='bank_balance'){
+ var bbItem=data.bankBalance||{bank:'不明',balance:0};
+ bbItem._fileId=file.id;
+ allBankBalanceList.push(bbItem);
  }else if(type==='unknown'){
  errors.push(name+': 画面の種類を判定できませんでした。');
  }else{
@@ -669,6 +708,7 @@ async function analyzePhoto(){
  if(allEntries.length){reviewData.photo=allEntries;renderReview('photo');}
  if(allHoldings.length){securitiesData=allHoldings;renderSecuritiesReview();}
  if(allIdecoList.length){idecoDataList=allIdecoList;renderIdecoReview();}
+ if(allBankBalanceList.length){bankBalanceDataList=allBankBalanceList;renderBankBalanceReview();}
 
  document.getElementById('photoAnalyzeBtn').disabled=false;
 }
@@ -837,6 +877,41 @@ async function confirmIdeco(){
  ok.classList.add('show');
  idecoDataList=[];
  document.getElementById('photoIdecoReview').classList.remove('show');
+ btn.classList.remove('show');
+ clearPhoto();
+ }catch(e){showError('photoError','エラー: '+e.message);}
+ btn.disabled=false;
+}
+
+function renderBankBalanceReview(){
+ document.getElementById('photoBankBalanceReview').innerHTML=bankBalanceDataList.map(function(d,i){
+ return '<div class="review-item">'+
+ '<input type="text" class="sec-input name" value="'+escapeAttr(d.bank||'')+'" placeholder="口座名" onchange="bankBalanceDataList['+i+'].bank=this.value">'+
+ '<input type="number" class="sec-input" value="'+(d.balance||0)+'" placeholder="残高" onchange="bankBalanceDataList['+i+'].balance=Number(this.value)">'+
+ '<button class="remove-btn" onclick="removeBankBalanceItem('+i+')">✕</button>'+
+ '</div>';
+ }).join('');
+ document.getElementById('photoBankBalanceReview').classList.add('show');
+ document.getElementById('photoBankBalanceConfirmBtn').classList.add('show');
+}
+
+function removeBankBalanceItem(idx){
+ bankBalanceDataList.splice(idx,1);
+ renderBankBalanceReview();
+}
+
+async function confirmBankBalance(){
+ var btn=document.getElementById('photoBankBalanceConfirmBtn');
+ var ok=document.getElementById('photoBankBalanceSuccess');
+ btn.disabled=true;
+ try{
+ for(var i=0;i<bankBalanceDataList.length;i++){
+ await sendBankBalanceToSheet(bankBalanceDataList[i]);
+ }
+ ok.textContent='✅ 口座残高を'+bankBalanceDataList.length+'件保存しました';
+ ok.classList.add('show');
+ bankBalanceDataList=[];
+ document.getElementById('photoBankBalanceReview').classList.remove('show');
  btn.classList.remove('show');
  clearPhoto();
  }catch(e){showError('photoError','エラー: '+e.message);}
