@@ -64,14 +64,19 @@ select.csv-bank{width:100%;background:var(--paper);color:var(--ink);border:none;
 .review-item .remove-btn{background:none;border:none;color:var(--vermillion);cursor:pointer;font-size:15px}
 .review-item .sec-input{width:90px;font-family:'DM Mono',monospace}
 .review-item .sec-input.name{width:120px;font-family:inherit}
+.review-item .date-warning{width:100%;font-size:11px;color:#c8553d;margin-top:2px}
 .ideco-field{margin-bottom:8px}
 .ideco-field label{display:block;font-size:10px;color:var(--text-soft);margin-bottom:4px}
 .ideco-field input{width:100%;background:var(--paper-dim);border:none;border-radius:6px;padding:8px 10px;font-family:'DM Mono',monospace;font-size:13px;color:var(--ink)}
+.ideco-item{background:var(--paper);color:var(--ink);border-radius:10px;padding:10px 12px;position:relative}
+.ideco-item .remove-btn{position:absolute;top:8px;right:10px;background:none;border:none;color:var(--vermillion);cursor:pointer;font-size:15px}
 .btn-confirm-all{width:100%;margin-top:10px;padding:12px;border:none;border-radius:10px;background:var(--celadon);color:white;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;display:none}
 .btn-confirm-all.show{display:block}
-.error-msg{display:none;background:rgba(200,85,61,0.12);border:1px solid rgba(200,85,61,0.3);border-radius:10px;padding:12px 14px;font-size:12px;color:#e8a394;margin-top:10px}
+.btn-add-row{width:100%;margin-top:8px;padding:9px;border:1.5px dashed var(--line);border-radius:8px;background:transparent;color:var(--paper);font-family:inherit;font-size:12px;cursor:pointer;display:none}
+.btn-add-row.show{display:block}
+.error-msg{display:none;background:rgba(200,85,61,0.12);border:1px solid rgba(200,85,61,0.3);border-radius:10px;padding:12px 14px;font-size:12px;color:#e8a394;margin-top:10px;white-space:pre-wrap}
 .error-msg.show{display:block}
-.success-msg{display:none;background:rgba(91,138,114,0.15);border:1px solid rgba(91,138,114,0.3);border-radius:10px;padding:12px 14px;font-size:12px;color:#a8c9b5;margin-top:10px}
+.success-msg{display:none;background:rgba(91,138,114,0.15);border:1px solid rgba(91,138,114,0.3);border-radius:10px;padding:12px 14px;font-size:12px;color:#a8c9b5;margin-top:10px;white-space:pre-wrap}
 .success-msg.show{display:block}
 .raw-text{display:none;background:rgba(255,255,255,0.04);border-radius:10px;padding:12px;font-size:11px;color:var(--text-soft);margin-top:10px;white-space:pre-wrap;max-height:200px;overflow-y:auto;user-select:text}
 .raw-text.show{display:block}
@@ -151,15 +156,19 @@ select.csv-bank{width:100%;background:var(--paper);color:var(--ink);border:none;
  </div>
  <div class="raw-text" id="rawText"></div>
  <div class="review-list" id="photoReview"></div>
+ <button class="btn-add-row" id="photoAddBtn" onclick="addReviewItem('photo')">＋ 明細を追加</button>
  <button class="btn-confirm-all" id="photoConfirmBtn" onclick="confirmReview('photo')">スプレッドシートに追加</button>
  <div class="success-msg" id="photoSuccess"></div>
  <div class="review-list" id="photoSecuritiesReview"></div>
+ <button class="btn-add-row" id="photoSecuritiesAddBtn" onclick="addSecuritiesItem()">＋ 銘柄を追加</button>
  <button class="btn-confirm-all" id="photoSecuritiesConfirmBtn" onclick="confirmSecurities()">証券データを保存</button>
  <div class="success-msg" id="photoSecuritiesSuccess"></div>
  <div class="review-list" id="photoIdecoReview"></div>
+ <button class="btn-add-row" id="photoIdecoAddBtn" onclick="addIdecoItem()">＋ iDeCo口座を追加</button>
  <button class="btn-confirm-all" id="photoIdecoConfirmBtn" onclick="confirmIdeco()">iDeCo残高を保存</button>
  <div class="success-msg" id="photoIdecoSuccess"></div>
  <div class="review-list" id="photoBankBalanceReview"></div>
+ <button class="btn-add-row" id="photoBankBalanceAddBtn" onclick="addBankBalanceItem()">＋ 口座を追加</button>
  <button class="btn-confirm-all" id="photoBankBalanceConfirmBtn" onclick="confirmBankBalance()">口座残高を保存</button>
  <div class="success-msg" id="photoBankBalanceSuccess"></div>
  </div>
@@ -189,6 +198,7 @@ select.csv-bank{width:100%;background:var(--paper);color:var(--ink);border:none;
  <div class="loading-inline" id="csvLoading"><div class="spinner-sm"></div>解析中...</div>
  <div class="error-msg" id="csvError"></div>
  <div class="review-list" id="csvReview"></div>
+ <button class="btn-add-row" id="csvAddBtn" onclick="addReviewItem('csv')">＋ 明細を追加</button>
  <button class="btn-confirm-all" id="csvConfirmBtn" onclick="confirmReview('csv')">スプレッドシートに追加</button>
  <div class="success-msg" id="csvSuccess"></div>
  </div>
@@ -244,6 +254,16 @@ function switchTab(btn){
  document.querySelectorAll('.input-panel').forEach(function(p){p.classList.remove('active');});
  btn.classList.add('active');
  document.getElementById('panel-'+btn.dataset.panel).classList.add('active');
+}
+
+// 家計簿は「前月」のシートに記載する運用のため、口座残高の日付が保存先の月と
+// ズレていないかをフロント側でも即座に確認できるよう、前月をYYYY-MM形式で返す。
+function _expectedPrevMonthYYYYMM(){
+ var today=new Date();
+ var d=new Date(today.getFullYear(), today.getMonth()-1, 1);
+ var yy=d.getFullYear();
+ var mm=String(d.getMonth()+1).padStart(2,'0');
+ return yy+'-'+mm;
 }
 
 function _collectFileIds(items){
@@ -357,9 +377,11 @@ function sendIdecoToSheet(ideco){
  });
 }
 
+// 口座残高をGASへ送信する。dateがあれば保存先の月とのズレチェックに使われ、
+// レスポンスに dateWarning が含まれる場合は呼び出し側で表示する。
 function sendBankBalanceToSheet(bb){
  var moveFileIds=bb&&bb._fileId?[bb._fileId]:[];
- var cleanData={bank:bb.bank,balance:bb.balance};
+ var cleanData={bank:bb.bank,balance:bb.balance,date:bb.date||''};
  return new Promise(function(resolve,reject){
  var cb='bankBalanceCallback_'+Date.now();
  var s=document.createElement('script');
@@ -536,11 +558,6 @@ function removeSelectedFile(idx){
  renderSelectedFiles();
 }
 
-// GAS経由（JSONP）で元画像をdata URLとして取得し、サムネイル表示＆タップで原寸表示（別タブ）
-// できるようにする。ブラウザから直接Drive APIをfetchするとCORSで失敗することがあるため、
-// 既にVision解析で実績のあるGAS(DriveApp)経由の取得に統一している。
-// これにより、Gemini/Vision側の読み取りミス（文字化けした銘柄名など）をユーザーが
-// 元のスクショと見比べて確認・手直しできる。
 function loadPhotoImage(id){
  if(photoImageUrls[id])return Promise.resolve(photoImageUrls[id]);
  return new Promise(function(resolve,reject){
@@ -575,8 +592,6 @@ function loadPhotoImage(id){
 
 function openFullImage(id){
  loadPhotoImage(id).then(function(dataUrl){
- // data:URLへの直接ナビゲーション(window.open)はブラウザにブロックされる場合があるため、
- // 一度blobに変換してobject URLを開く
  return fetch(dataUrl).then(function(r){return r.blob();});
  }).then(function(blob){
  var url=URL.createObjectURL(blob);
@@ -620,7 +635,10 @@ function clearPhoto(){
  photoImageUrls={};
  document.getElementById('photoInput').value='';
  document.getElementById('photoFileList').innerHTML='';
- ['photoPreview','photoAnalyzeBtn','photoReview','photoConfirmBtn','rawText','rawTextCopyWrap','photoSecuritiesReview','photoSecuritiesConfirmBtn','photoIdecoReview','photoIdecoConfirmBtn','photoBankBalanceReview','photoBankBalanceConfirmBtn'].forEach(function(id){
+ ['photoPreview','photoAnalyzeBtn','photoReview','photoAddBtn','photoConfirmBtn','rawText','rawTextCopyWrap',
+  'photoSecuritiesReview','photoSecuritiesAddBtn','photoSecuritiesConfirmBtn',
+  'photoIdecoReview','photoIdecoAddBtn','photoIdecoConfirmBtn',
+  'photoBankBalanceReview','photoBankBalanceAddBtn','photoBankBalanceConfirmBtn'].forEach(function(id){
  document.getElementById(id).classList.remove('show');
  });
 }
@@ -631,7 +649,6 @@ async function analyzePhoto(){
  return;
  }
  if(!selectedFiles.length&&photoFile){
- // 直接アップロードはfileIdなしのため、まずDriveにアップロードしてからfileIdで解析
  showError('photoError','直接アップロードはドライブ経由のみ対応しています。「📂 家計簿スクショから選択」をご利用ください（複数選択も可能です）。');
  return;
  }
@@ -644,8 +661,6 @@ async function analyzePhoto(){
  loadingEl.classList.add('show');
  loadingEl.innerHTML='<div class="spinner-sm"></div>GAS経由で解析中... (0/'+total+'件)';
 
- // Gemini/Vision APIが同時多重リクエストに弱く、並列実行すると詰まって
- // 全件タイムアウトすることがあるため、1枚ずつ順番に解析する
  var settled=[];
  for(var fi=0; fi<selectedFiles.length; fi++){
  var f=selectedFiles[fi];
@@ -682,8 +697,8 @@ async function analyzePhoto(){
  idecoItem._fileId=file.id;
  allIdecoList.push(idecoItem);
  }else if(type==='bank_balance'){
- var bbItem=data.bankBalance||{bank:'不明',balance:0};
- bbItem._fileId=file.id;
+ var bbSrc=data.bankBalance||{bank:'不明',balance:0,date:''};
+ var bbItem={bank:bbSrc.bank||'不明',balance:bbSrc.balance||0,date:bbSrc.date||'',_fileId:file.id};
  allBankBalanceList.push(bbItem);
  }else if(type==='unknown'){
  errors.push(name+': 画面の種類を判定できませんでした。');
@@ -725,7 +740,7 @@ document.getElementById('csvInput').addEventListener('change',function(e){
 function clearCSV(){
  csvFile=null;
  document.getElementById('csvInput').value='';
- ['csvPreview','csvAnalyzeBtn','csvReview','csvConfirmBtn'].forEach(function(id){
+ ['csvPreview','csvAnalyzeBtn','csvReview','csvAddBtn','csvConfirmBtn'].forEach(function(id){
  document.getElementById(id).classList.remove('show');
  });
 }
@@ -778,11 +793,11 @@ function renderReview(kind){
  document.getElementById(kind+'Review').innerHTML=reviewData[kind].map(function(e,i){
  return '<div class="review-item">'+
  '<input type="date" value="'+e.date+'" onchange="reviewData[\''+kind+'\']['+i+'].date=this.value" style="width:110px">'+
- '<input type="text" class="desc-input" value="'+escapeAttr(e.description)+'" onchange="reviewData[\''+kind+'\']['+i+'].description=this.value">'+
+ '<input type="text" class="desc-input" value="'+escapeAttr(e.description)+'" placeholder="内容" onchange="reviewData[\''+kind+'\']['+i+'].description=this.value">'+
  '<select onchange="reviewData[\''+kind+'\']['+i+'].category=this.value">'+
  allCats.map(function(c){return '<option'+(e.category===c?' selected':'')+'>'+c+'</option>';}).join('')+
  '</select>'+
- '<input type="number" class="amt-input" value="'+e.amount+'" onchange="reviewData[\''+kind+'\']['+i+'].amount=Number(this.value)">'+
+ '<input type="number" class="amt-input" value="'+e.amount+'" placeholder="金額" onchange="reviewData[\''+kind+'\']['+i+'].amount=Number(this.value)">'+
  '<select onchange="reviewData[\''+kind+'\']['+i+'].source=this.value">'+
  '<option value="bank"'+(e.source!=='card'?' selected':'')+'>銀行</option>'+
  '<option value="card"'+(e.source==='card'?' selected':'')+'>カード</option>'+
@@ -791,7 +806,14 @@ function renderReview(kind){
  '</div>';
  }).join('');
  document.getElementById(kind+'Review').classList.add('show');
+ document.getElementById(kind+'AddBtn').classList.add('show');
  document.getElementById(kind+'ConfirmBtn').classList.add('show');
+}
+
+function addReviewItem(kind){
+ var allCats=CATEGORIES.expense.concat(CATEGORIES.income);
+ reviewData[kind].push({date:new Date().toISOString().slice(0,10),description:'',category:allCats[0],type:'expense',amount:0,source:'bank'});
+ renderReview(kind);
 }
 
 function removeReviewItem(kind,idx){
@@ -810,6 +832,7 @@ async function confirmReview(kind){
  addToRecent(reviewData[kind]);
  reviewData[kind]=[];
  document.getElementById(kind+'Review').classList.remove('show');
+ document.getElementById(kind+'AddBtn').classList.remove('show');
  btn.classList.remove('show');
  if(kind==='photo')clearPhoto();
  if(kind==='csv')clearCSV();
@@ -830,7 +853,13 @@ function renderSecuritiesReview(){
  '</div>';
  }).join('');
  document.getElementById('photoSecuritiesReview').classList.add('show');
+ document.getElementById('photoSecuritiesAddBtn').classList.add('show');
  document.getElementById('photoSecuritiesConfirmBtn').classList.add('show');
+}
+
+function addSecuritiesItem(){
+ securitiesData.push({company:'',name:'',investment:0,current_value:0,unrealized_gain:0,return_rate:0});
+ renderSecuritiesReview();
 }
 
 function removeSecuritiesItem(idx){
@@ -848,6 +877,7 @@ async function confirmSecurities(){
  ok.classList.add('show');
  securitiesData=[];
  document.getElementById('photoSecuritiesReview').classList.remove('show');
+ document.getElementById('photoSecuritiesAddBtn').classList.remove('show');
  btn.classList.remove('show');
  clearPhoto();
  }catch(e){showError('photoError','エラー: '+e.message);}
@@ -856,13 +886,25 @@ async function confirmSecurities(){
 
 function renderIdecoReview(){
  document.getElementById('photoIdecoReview').innerHTML=idecoDataList.map(function(d,i){
- return '<div class="review-item" style="flex-direction:column;align-items:stretch">'+
+ return '<div class="ideco-item">'+
+ '<button class="remove-btn" onclick="removeIdecoItem('+i+')">✕</button>'+
  '<div class="ideco-field"><label>資産残高（円）'+(idecoDataList.length>1?' #'+(i+1):'')+'</label><input type="number" value="'+(d.balance||0)+'" onchange="idecoDataList['+i+'].balance=Number(this.value)"></div>'+
  '<div class="ideco-field"><label>掛金（円・任意）</label><input type="number" value="'+(d.contribution||0)+'" onchange="idecoDataList['+i+'].contribution=Number(this.value)"></div>'+
  '</div>';
  }).join('');
  document.getElementById('photoIdecoReview').classList.add('show');
+ document.getElementById('photoIdecoAddBtn').classList.add('show');
  document.getElementById('photoIdecoConfirmBtn').classList.add('show');
+}
+
+function addIdecoItem(){
+ idecoDataList.push({balance:0,contribution:0});
+ renderIdecoReview();
+}
+
+function removeIdecoItem(idx){
+ idecoDataList.splice(idx,1);
+ renderIdecoReview();
 }
 
 async function confirmIdeco(){
@@ -877,22 +919,40 @@ async function confirmIdeco(){
  ok.classList.add('show');
  idecoDataList=[];
  document.getElementById('photoIdecoReview').classList.remove('show');
+ document.getElementById('photoIdecoAddBtn').classList.remove('show');
  btn.classList.remove('show');
  clearPhoto();
  }catch(e){showError('photoError','エラー: '+e.message);}
  btn.disabled=false;
 }
 
+// 口座残高一覧を描画する。dateが保存先の月（前月）とズレている場合、
+// 各行の下に警告文を表示する（バックエンドのwriteBankBalanceToSheetの
+// チェックと同じロジックをフロントでも先出しして気づきやすくする）。
 function renderBankBalanceReview(){
+ var expected=_expectedPrevMonthYYYYMM();
  document.getElementById('photoBankBalanceReview').innerHTML=bankBalanceDataList.map(function(d,i){
+ var mismatch=d.date&&d.date.length>=7&&d.date.slice(0,7)!==expected;
+ var warningHtml=mismatch
+ ?('<div class="date-warning">⚠️残高日('+escapeHtml(d.date)+')が保存先の月('+expected+')と異なります。履歴画面や古いスクショの可能性があります。</div>')
+ :'';
  return '<div class="review-item">'+
  '<input type="text" class="sec-input name" value="'+escapeAttr(d.bank||'')+'" placeholder="口座名" onchange="bankBalanceDataList['+i+'].bank=this.value">'+
  '<input type="number" class="sec-input" value="'+(d.balance||0)+'" placeholder="残高" onchange="bankBalanceDataList['+i+'].balance=Number(this.value)">'+
+ '<input type="date" class="sec-input" value="'+escapeAttr(d.date||'')+'" onchange="bankBalanceDataList['+i+'].date=this.value;renderBankBalanceReview()">'+
  '<button class="remove-btn" onclick="removeBankBalanceItem('+i+')">✕</button>'+
+ warningHtml+
  '</div>';
  }).join('');
  document.getElementById('photoBankBalanceReview').classList.add('show');
+ document.getElementById('photoBankBalanceAddBtn').classList.add('show');
  document.getElementById('photoBankBalanceConfirmBtn').classList.add('show');
+}
+
+function addBankBalanceItem(){
+ var expected=_expectedPrevMonthYYYYMM();
+ bankBalanceDataList.push({bank:'',balance:0,date:expected+'-01'});
+ renderBankBalanceReview();
 }
 
 function removeBankBalanceItem(idx){
@@ -905,13 +965,17 @@ async function confirmBankBalance(){
  var ok=document.getElementById('photoBankBalanceSuccess');
  btn.disabled=true;
  try{
+ var warnings=[];
  for(var i=0;i<bankBalanceDataList.length;i++){
- await sendBankBalanceToSheet(bankBalanceDataList[i]);
+ var res=await sendBankBalanceToSheet(bankBalanceDataList[i]);
+ if(res&&res.dateWarning)warnings.push((bankBalanceDataList[i].bank||'不明')+': '+res.dateWarning);
  }
  ok.textContent='✅ 口座残高を'+bankBalanceDataList.length+'件保存しました';
  ok.classList.add('show');
+ if(warnings.length)showError('photoError',warnings.join('\n\n'));
  bankBalanceDataList=[];
  document.getElementById('photoBankBalanceReview').classList.remove('show');
+ document.getElementById('photoBankBalanceAddBtn').classList.remove('show');
  btn.classList.remove('show');
  clearPhoto();
  }catch(e){showError('photoError','エラー: '+e.message);}
