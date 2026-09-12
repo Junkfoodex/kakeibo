@@ -179,6 +179,7 @@ select.csv-bank{width:100%;background:var(--paper);color:var(--ink);border:none;
  <option value="三菱UFJ銀行">三菱UFJ銀行</option>
  <option value="ゆうちょ銀行">ゆうちょ銀行</option>
  <option value="三井住友銀行">三井住友銀行</option>
+ <option value="あおぞら銀行">あおぞら銀行</option>
  <option value="楽天カード">楽天カード</option>
  <option value="エポスカード">エポスカード</option>
  <option value="viewカード">viewカード</option>
@@ -230,6 +231,7 @@ var DRIVE_FOLDER_ID='1B2mAntpJJV3sCKza08r_LZ4VqC2BwlxQ';
 var manualType='expense',photoFile=null,selectedFiles=[],csvFile=null,reviewData={photo:[],csv:[]},recentEntries=[],accessToken=null;
 var securitiesData=[],idecoDataList=[],bankBalanceDataList=[],currentSheetName=null;
 var securitiesSource='photo',bankBalanceSource='photo';
+var BANK_NAME_OPTIONS=['楽天銀行','三菱UFJ銀行','ゆうちょ銀行','三井住友銀行','あおぞら銀行','楽天カード','エポスカード','viewカード','三井住友カード','楽天証券','SBI証券'];
 var photoImageUrls={};
 var pickerInited=false;
 var pickerTimer=setInterval(function(){
@@ -813,8 +815,6 @@ async function analyzeCSV(){
  reviewData.csv=result.entries||[];
  if(!reviewData.csv.length){showError('csvError','取引データが見つかりませんでした。');}
  else{renderReview('csv');}
- // CSVに残高列が含まれていた場合、取引保存と同時に口座残高も記録できるよう
- // 口座残高レビューも合わせて表示する（取引とは独立して確定・保存できる）。
  if(result.bankBalance){
  bankBalanceSource='csv';
  bankBalanceDataList=[result.bankBalance];
@@ -977,8 +977,16 @@ function renderBankBalanceReview(){
  var warningHtml=mismatch
  ?('<div class="date-warning">⚠️残高日('+escapeHtml(d.date)+')が保存先の月('+expected+')と異なります。履歴画面や古いスクショの可能性があります。</div>')
  :'';
+ var curBank=d.bank||'';
+ var opts=BANK_NAME_OPTIONS.slice();
+ if(curBank&&curBank!=='不明'&&opts.indexOf(curBank)===-1)opts=[curBank].concat(opts);
+ var bankSelectHtml='<select class="sec-input name" onchange="updateBankBalanceBank('+i+',this.value)">'
+ +opts.map(function(opt){return '<option value="'+escapeAttr(opt)+'"'+(opt===curBank?' selected':'')+'>'+escapeHtml(opt)+'</option>';}).join('')
+ +'<option value="不明"'+(curBank==='不明'||!curBank?' selected':'')+'>不明</option>'
+ +'<option value="__other__">その他（入力する）</option>'
+ +'</select>';
  return '<div class="review-item">'+
- '<input type="text" class="sec-input name" value="'+escapeAttr(d.bank||'')+'" placeholder="口座名" onchange="bankBalanceDataList['+i+'].bank=this.value">'+
+ bankSelectHtml+
  '<input type="number" class="sec-input" value="'+(d.balance||0)+'" placeholder="残高" onchange="bankBalanceDataList['+i+'].balance=Number(this.value)">'+
  '<input type="date" class="sec-input" value="'+escapeAttr(d.date||'')+'" onchange="bankBalanceDataList['+i+'].date=this.value;renderBankBalanceReview()">'+
  '<button class="remove-btn" onclick="removeBankBalanceItem('+i+')">✕</button>'+
@@ -994,6 +1002,17 @@ function addBankBalanceItem(source){
  if(source)bankBalanceSource=source;
  var expected=_expectedPrevMonthYYYYMM();
  bankBalanceDataList.push({bank:'',balance:0,date:expected+'-01'});
+ renderBankBalanceReview();
+}
+
+function updateBankBalanceBank(idx,val){
+ if(val==='__other__'){
+ var name=window.prompt('口座名を入力してください',bankBalanceDataList[idx].bank||'');
+ if(name!==null&&name.trim())bankBalanceDataList[idx].bank=name.trim();
+ renderBankBalanceReview();
+ return;
+ }
+ bankBalanceDataList[idx].bank=val;
  renderBankBalanceReview();
 }
 
