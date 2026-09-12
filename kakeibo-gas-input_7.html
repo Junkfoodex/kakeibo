@@ -160,7 +160,7 @@ select.csv-bank{width:100%;background:var(--paper);color:var(--ink);border:none;
  <button class="btn-confirm-all" id="photoConfirmBtn" onclick="confirmReview('photo')">スプレッドシートに追加</button>
  <div class="success-msg" id="photoSuccess"></div>
  <div class="review-list" id="photoSecuritiesReview"></div>
- <button class="btn-add-row" id="photoSecuritiesAddBtn" onclick="addSecuritiesItem()">＋ 銘柄を追加</button>
+ <button class="btn-add-row" id="photoSecuritiesAddBtn" onclick="addSecuritiesItem('photo')">＋ 銘柄を追加</button>
  <button class="btn-confirm-all" id="photoSecuritiesConfirmBtn" onclick="confirmSecurities()">証券データを保存</button>
  <div class="success-msg" id="photoSecuritiesSuccess"></div>
  <div class="review-list" id="photoIdecoReview"></div>
@@ -168,7 +168,7 @@ select.csv-bank{width:100%;background:var(--paper);color:var(--ink);border:none;
  <button class="btn-confirm-all" id="photoIdecoConfirmBtn" onclick="confirmIdeco()">iDeCo残高を保存</button>
  <div class="success-msg" id="photoIdecoSuccess"></div>
  <div class="review-list" id="photoBankBalanceReview"></div>
- <button class="btn-add-row" id="photoBankBalanceAddBtn" onclick="addBankBalanceItem()">＋ 口座を追加</button>
+ <button class="btn-add-row" id="photoBankBalanceAddBtn" onclick="addBankBalanceItem('photo')">＋ 口座を追加</button>
  <button class="btn-confirm-all" id="photoBankBalanceConfirmBtn" onclick="confirmBankBalance()">口座残高を保存</button>
  <div class="success-msg" id="photoBankBalanceSuccess"></div>
  </div>
@@ -183,12 +183,14 @@ select.csv-bank{width:100%;background:var(--paper);color:var(--ink);border:none;
  <option value="エポスカード">エポスカード</option>
  <option value="viewカード">viewカード</option>
  <option value="三井住友カード">三井住友カード</option>
+ <option value="楽天証券">楽天証券</option>
+ <option value="SBI証券">SBI証券</option>
  </select>
  <div class="upload-zone">
  <input type="file" id="csvInput" accept=".csv,.txt">
  <div class="icon">📄</div>
  <h3>明細CSVファイル</h3>
- <p>銀行・カードサイトでダウンロードしたCSV</p>
+ <p>銀行・カード・証券サイトでダウンロードしたCSV（取引明細／保有銘柄／残高履歴のいずれも自動判定）</p>
  </div>
  <div class="preview-row" id="csvPreview">
  <span>📄</span><span class="name" id="csvName"></span>
@@ -201,6 +203,14 @@ select.csv-bank{width:100%;background:var(--paper);color:var(--ink);border:none;
  <button class="btn-add-row" id="csvAddBtn" onclick="addReviewItem('csv')">＋ 明細を追加</button>
  <button class="btn-confirm-all" id="csvConfirmBtn" onclick="confirmReview('csv')">スプレッドシートに追加</button>
  <div class="success-msg" id="csvSuccess"></div>
+ <div class="review-list" id="csvSecuritiesReview"></div>
+ <button class="btn-add-row" id="csvSecuritiesAddBtn" onclick="addSecuritiesItem('csv')">＋ 銘柄を追加</button>
+ <button class="btn-confirm-all" id="csvSecuritiesConfirmBtn" onclick="confirmSecurities()">証券データを保存</button>
+ <div class="success-msg" id="csvSecuritiesSuccess"></div>
+ <div class="review-list" id="csvBankBalanceReview"></div>
+ <button class="btn-add-row" id="csvBankBalanceAddBtn" onclick="addBankBalanceItem('csv')">＋ 口座を追加</button>
+ <button class="btn-confirm-all" id="csvBankBalanceConfirmBtn" onclick="confirmBankBalance()">口座残高を保存</button>
+ <div class="success-msg" id="csvBankBalanceSuccess"></div>
  </div>
  </div>
  <div id="recentSection" style="display:none">
@@ -219,6 +229,7 @@ var GOOGLE_CLIENT_ID='958314442221-jqh28oakgll8goaih2r5cqmvd070k3im.apps.googleu
 var DRIVE_FOLDER_ID='1B2mAntpJJV3sCKza08r_LZ4VqC2BwlxQ';
 var manualType='expense',photoFile=null,selectedFiles=[],csvFile=null,reviewData={photo:[],csv:[]},recentEntries=[],accessToken=null;
 var securitiesData=[],idecoDataList=[],bankBalanceDataList=[],currentSheetName=null;
+var securitiesSource='photo',bankBalanceSource='photo';
 var photoImageUrls={};
 var pickerInited=false;
 var pickerTimer=setInterval(function(){
@@ -256,8 +267,6 @@ function switchTab(btn){
  document.getElementById('panel-'+btn.dataset.panel).classList.add('active');
 }
 
-// 家計簿は「前月」のシートに記載する運用のため、口座残高の日付が保存先の月と
-// ズレていないかをフロント側でも即座に確認できるよう、前月をYYYY-MM形式で返す。
 function _expectedPrevMonthYYYYMM(){
  var today=new Date();
  var d=new Date(today.getFullYear(), today.getMonth()-1, 1);
@@ -377,8 +386,6 @@ function sendIdecoToSheet(ideco){
  });
 }
 
-// 口座残高をGASへ送信する。dateがあれば保存先の月とのズレチェックに使われ、
-// レスポンスに dateWarning が含まれる場合は呼び出し側で表示する。
 function sendBankBalanceToSheet(bb){
  var moveFileIds=bb&&bb._fileId?[bb._fileId]:[];
  var cleanData={bank:bb.bank,balance:bb.balance,date:bb.date||''};
@@ -721,9 +728,9 @@ async function analyzePhoto(){
  }
  if(errors.length)showError('photoError',errors.join('\n'));
  if(allEntries.length){reviewData.photo=allEntries;renderReview('photo');}
- if(allHoldings.length){securitiesData=allHoldings;renderSecuritiesReview();}
+ if(allHoldings.length){securitiesSource='photo';securitiesData=allHoldings;renderSecuritiesReview();}
  if(allIdecoList.length){idecoDataList=allIdecoList;renderIdecoReview();}
- if(allBankBalanceList.length){bankBalanceDataList=allBankBalanceList;renderBankBalanceReview();}
+ if(allBankBalanceList.length){bankBalanceSource='photo';bankBalanceDataList=allBankBalanceList;renderBankBalanceReview();}
 
  document.getElementById('photoAnalyzeBtn').disabled=false;
 }
@@ -740,7 +747,9 @@ document.getElementById('csvInput').addEventListener('change',function(e){
 function clearCSV(){
  csvFile=null;
  document.getElementById('csvInput').value='';
- ['csvPreview','csvAnalyzeBtn','csvReview','csvAddBtn','csvConfirmBtn'].forEach(function(id){
+ ['csvPreview','csvAnalyzeBtn','csvReview','csvAddBtn','csvConfirmBtn',
+  'csvSecuritiesReview','csvSecuritiesAddBtn','csvSecuritiesConfirmBtn',
+  'csvBankBalanceReview','csvBankBalanceAddBtn','csvBankBalanceConfirmBtn'].forEach(function(id){
  document.getElementById(id).classList.remove('show');
  });
 }
@@ -752,14 +761,15 @@ async function analyzeCSV(){
  document.getElementById('csvError').classList.remove('show');
  try{
  var text=await readCSVText(csvFile);
+ var bankHint=document.getElementById('csvBank').value;
  var cb='csvCallback_'+Date.now();
  var result=await new Promise(function(resolve,reject){
  var s=document.createElement('script');
  var timer=setTimeout(function(){
  delete window[cb];
  if(s.parentNode)s.parentNode.removeChild(s);
- reject(new Error('タイムアウト（30秒）'));
- },30000);
+ reject(new Error('タイムアウト（60秒）'));
+ },60000);
  window[cb]=function(data){
  clearTimeout(timer);
  delete window[cb];
@@ -768,7 +778,8 @@ async function analyzeCSV(){
  else{reject(new Error((data&&data.message)||'解析失敗'));}
  };
  var base64=btoa(unescape(encodeURIComponent(text)));
- s.src=GAS_URL+'?csv='+encodeURIComponent(base64)+'&callback='+cb;
+ var url=GAS_URL+'?csv='+encodeURIComponent(base64)+'&bankHint='+encodeURIComponent(bankHint)+'&callback='+cb;
+ s.src=url;
  s.onerror=function(){
  clearTimeout(timer);
  delete window[cb];
@@ -778,9 +789,30 @@ async function analyzeCSV(){
  document.body.appendChild(s);
  });
  document.getElementById('csvLoading').classList.remove('show');
+ var type=result.type||'transactions';
+ if(type==='securities'){
+ if(result.holdings&&result.holdings.length){
+ securitiesSource='csv';
+ securitiesData=result.holdings;
+ renderSecuritiesReview();
+ }else{
+ showError('csvError','証券銘柄を検出できませんでした。');
+ }
+ }else if(type==='bank_balance'){
+ if(result.bankBalance){
+ bankBalanceSource='csv';
+ bankBalanceDataList=[result.bankBalance];
+ renderBankBalanceReview();
+ }else{
+ showError('csvError','口座残高を検出できませんでした。');
+ }
+ }else if(type==='unknown'){
+ showError('csvError','CSVの種類を判定できませんでした。金融機関の選択を変えて試すか、内容をご確認ください。');
+ }else{
  reviewData.csv=result.entries||[];
  if(!reviewData.csv.length){showError('csvError','取引データが見つかりませんでした。');}
  else{renderReview('csv');}
+ }
  }catch(e){
  document.getElementById('csvLoading').classList.remove('show');
  showError('csvError','エラー: '+e.message);
@@ -841,7 +873,8 @@ async function confirmReview(kind){
 }
 
 function renderSecuritiesReview(){
- document.getElementById('photoSecuritiesReview').innerHTML=securitiesData.map(function(h,i){
+ var p=securitiesSource;
+ document.getElementById(p+'SecuritiesReview').innerHTML=securitiesData.map(function(h,i){
  return '<div class="review-item">'+
  '<input type="text" class="sec-input name" value="'+escapeAttr(h.company||'')+'" placeholder="証券会社" onchange="securitiesData['+i+'].company=this.value">'+
  '<input type="text" class="sec-input name" value="'+escapeAttr(h.name||'')+'" placeholder="銘柄名" onchange="securitiesData['+i+'].name=this.value">'+
@@ -852,12 +885,13 @@ function renderSecuritiesReview(){
  '<button class="remove-btn" onclick="removeSecuritiesItem('+i+')">✕</button>'+
  '</div>';
  }).join('');
- document.getElementById('photoSecuritiesReview').classList.add('show');
- document.getElementById('photoSecuritiesAddBtn').classList.add('show');
- document.getElementById('photoSecuritiesConfirmBtn').classList.add('show');
+ document.getElementById(p+'SecuritiesReview').classList.add('show');
+ document.getElementById(p+'SecuritiesAddBtn').classList.add('show');
+ document.getElementById(p+'SecuritiesConfirmBtn').classList.add('show');
 }
 
-function addSecuritiesItem(){
+function addSecuritiesItem(source){
+ if(source)securitiesSource=source;
  securitiesData.push({company:'',name:'',investment:0,current_value:0,unrealized_gain:0,return_rate:0});
  renderSecuritiesReview();
 }
@@ -868,19 +902,20 @@ function removeSecuritiesItem(idx){
 }
 
 async function confirmSecurities(){
- var btn=document.getElementById('photoSecuritiesConfirmBtn');
- var ok=document.getElementById('photoSecuritiesSuccess');
+ var p=securitiesSource;
+ var btn=document.getElementById(p+'SecuritiesConfirmBtn');
+ var ok=document.getElementById(p+'SecuritiesSuccess');
  btn.disabled=true;
  try{
  await sendHoldingsToSheet(securitiesData);
  ok.textContent='✅ '+securitiesData.length+'件の証券データを保存しました';
  ok.classList.add('show');
  securitiesData=[];
- document.getElementById('photoSecuritiesReview').classList.remove('show');
- document.getElementById('photoSecuritiesAddBtn').classList.remove('show');
+ document.getElementById(p+'SecuritiesReview').classList.remove('show');
+ document.getElementById(p+'SecuritiesAddBtn').classList.remove('show');
  btn.classList.remove('show');
- clearPhoto();
- }catch(e){showError('photoError','エラー: '+e.message);}
+ if(p==='photo')clearPhoto(); else clearCSV();
+ }catch(e){showError(p==='photo'?'photoError':'csvError','エラー: '+e.message);}
  btn.disabled=false;
 }
 
@@ -926,12 +961,10 @@ async function confirmIdeco(){
  btn.disabled=false;
 }
 
-// 口座残高一覧を描画する。dateが保存先の月（前月）とズレている場合、
-// 各行の下に警告文を表示する（バックエンドのwriteBankBalanceToSheetの
-// チェックと同じロジックをフロントでも先出しして気づきやすくする）。
 function renderBankBalanceReview(){
+ var p=bankBalanceSource;
  var expected=_expectedPrevMonthYYYYMM();
- document.getElementById('photoBankBalanceReview').innerHTML=bankBalanceDataList.map(function(d,i){
+ document.getElementById(p+'BankBalanceReview').innerHTML=bankBalanceDataList.map(function(d,i){
  var mismatch=d.date&&d.date.length>=7&&d.date.slice(0,7)!==expected;
  var warningHtml=mismatch
  ?('<div class="date-warning">⚠️残高日('+escapeHtml(d.date)+')が保存先の月('+expected+')と異なります。履歴画面や古いスクショの可能性があります。</div>')
@@ -944,12 +977,13 @@ function renderBankBalanceReview(){
  warningHtml+
  '</div>';
  }).join('');
- document.getElementById('photoBankBalanceReview').classList.add('show');
- document.getElementById('photoBankBalanceAddBtn').classList.add('show');
- document.getElementById('photoBankBalanceConfirmBtn').classList.add('show');
+ document.getElementById(p+'BankBalanceReview').classList.add('show');
+ document.getElementById(p+'BankBalanceAddBtn').classList.add('show');
+ document.getElementById(p+'BankBalanceConfirmBtn').classList.add('show');
 }
 
-function addBankBalanceItem(){
+function addBankBalanceItem(source){
+ if(source)bankBalanceSource=source;
  var expected=_expectedPrevMonthYYYYMM();
  bankBalanceDataList.push({bank:'',balance:0,date:expected+'-01'});
  renderBankBalanceReview();
@@ -961,8 +995,9 @@ function removeBankBalanceItem(idx){
 }
 
 async function confirmBankBalance(){
- var btn=document.getElementById('photoBankBalanceConfirmBtn');
- var ok=document.getElementById('photoBankBalanceSuccess');
+ var p=bankBalanceSource;
+ var btn=document.getElementById(p+'BankBalanceConfirmBtn');
+ var ok=document.getElementById(p+'BankBalanceSuccess');
  btn.disabled=true;
  try{
  var warnings=[];
@@ -972,13 +1007,13 @@ async function confirmBankBalance(){
  }
  ok.textContent='✅ 口座残高を'+bankBalanceDataList.length+'件保存しました';
  ok.classList.add('show');
- if(warnings.length)showError('photoError',warnings.join('\n\n'));
+ if(warnings.length)showError(p==='photo'?'photoError':'csvError',warnings.join('\n\n'));
  bankBalanceDataList=[];
- document.getElementById('photoBankBalanceReview').classList.remove('show');
- document.getElementById('photoBankBalanceAddBtn').classList.remove('show');
+ document.getElementById(p+'BankBalanceReview').classList.remove('show');
+ document.getElementById(p+'BankBalanceAddBtn').classList.remove('show');
  btn.classList.remove('show');
- clearPhoto();
- }catch(e){showError('photoError','エラー: '+e.message);}
+ if(p==='photo')clearPhoto(); else clearCSV();
+ }catch(e){showError(p==='photo'?'photoError':'csvError','エラー: '+e.message);}
  btn.disabled=false;
 }
 
