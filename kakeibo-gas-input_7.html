@@ -807,7 +807,8 @@ async function analyzeCSV(){
  showError('csvError','口座残高を検出できませんでした。');
  }
  }else if(type==='unknown'){
- showError('csvError','CSVの種類を判定できませんでした。金融機関の選択を変えて試すか、内容をご確認ください。');
+ var diag=result.geminiError?('\n(詳細: '+result.geminiError+')'):'';
+ showError('csvError','CSVの種類を判定できませんでした。金融機関の選択を変えて試すか、内容をご確認ください。'+diag);
  }else{
  reviewData.csv=result.entries||[];
  if(!reviewData.csv.length){showError('csvError','取引データが見つかりませんでした。');}
