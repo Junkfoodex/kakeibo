@@ -232,6 +232,30 @@ var manualType='expense',photoFile=null,selectedFiles=[],csvFile=null,reviewData
 var securitiesData=[],idecoDataList=[],bankBalanceDataList=[],currentSheetName=null;
 var securitiesSource='photo',bankBalanceSource='photo';
 var BANK_NAME_OPTIONS=['楽天銀行','三菱UFJ銀行','ゆうちょ銀行','三井住友銀行','あおぞら銀行','楽天カード','エポスカード','viewカード','三井住友カード','楽天証券','SBI証券'];
+// ファイル名に含まれるキーワードから金融機関を推測するためのパターン一覧。
+// カード/銀行/証券で同じ会社名（楽天・三井住友等）が重複するため、より具体的なもの
+// （証券・カード）を先に判定し、最後に銀行にフォールバックする順序にしている。
+var BANK_FILENAME_PATTERNS=[
+ [/楽天証券|rakuten[-_ ]?sec/i,'楽天証券'],
+ [/楽天カード|rakuten[-_ ]?card/i,'楽天カード'],
+ [/楽天銀行|rakuten[-_ ]?bank/i,'楽天銀行'],
+ [/三井住友カード|smcc/i,'三井住友カード'],
+ [/三井住友銀行|smbc/i,'三井住友銀行'],
+ [/三菱UFJ|三菱東京|mufg/i,'三菱UFJ銀行'],
+ [/ゆうちょ|yucho/i,'ゆうちょ銀行'],
+ [/あおぞら|aozora/i,'あおぞら銀行'],
+ [/エポス|epos/i,'エポスカード'],
+ [/view[-_ ]?card|ビューカード/i,'viewカード'],
+ [/sbi[-_ ]?証券|sbisec/i,'SBI証券']
+];
+
+// ファイル名から金融機関を推測する。マッチしなければnullを返す（その場合は「自動判定」のまま）。
+function _guessBankFromFilename(name){
+ for(var i=0;i<BANK_FILENAME_PATTERNS.length;i++){
+ if(BANK_FILENAME_PATTERNS[i][0].test(name))return BANK_FILENAME_PATTERNS[i][1];
+ }
+ return null;
+}
 var photoImageUrls={};
 var pickerInited=false;
 var pickerTimer=setInterval(function(){
@@ -743,6 +767,13 @@ document.getElementById('csvInput').addEventListener('change',function(e){
  document.getElementById('csvName').textContent=csvFile.name;
  document.getElementById('csvPreview').classList.add('show');
  document.getElementById('csvAnalyzeBtn').classList.add('show');
+ var guessed=_guessBankFromFilename(csvFile.name);
+ if(guessed){
+ var sel=document.getElementById('csvBank');
+ for(var gi=0;gi<sel.options.length;gi++){
+ if(sel.options[gi].value===guessed){sel.selectedIndex=gi;break;}
+ }
+ }
  }
 });
 
