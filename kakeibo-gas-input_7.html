@@ -1147,37 +1147,3 @@ function escapeHtml(str){
  var d=document.createElement('div');
  d.textContent=str;
  return d.innerHTML
-
-
-function escapeHtml(str){
- var d=document.createElement('div');
- d.textContent=str;
- return d.innerHTML;
-}
-
-function escapeAttr(str){
- return String(str).replace(/"/g,'&quot;');
-}
-
-function fileToBase64(file){
- return new Promise(function(resolve,reject){
- var r=new FileReader();
- r.onload=function(){resolve(r.result.split(',')[1]);};
- r.onerror=reject;
- r.readAsDataURL(file);
- });
-}
-
-function readCSVText(file){
- return new Promise(function(resolve,reject){
- var r=new FileReader();
- r.onload=function(e){resolve(e.target.result);};
- r.onerror=reject;
- r.readAsText(file,'Shift_JIS');
- });
-}
-
-init();
-</script>
-</body>
-</html>
