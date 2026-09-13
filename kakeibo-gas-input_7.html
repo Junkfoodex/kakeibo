@@ -787,16 +787,9 @@ function clearCSV(){
  });
 }
 
-async function analyzeCSV(){
- if(!csvFile)return;
- document.getElementById('csvAnalyzeBtn').disabled=true;
- document.getElementById('csvLoading').classList.add('show');
- document.getElementById('csvError').classList.remove('show');
- try{
- var text=await readCSVText(csvFile);
- var bankHint=document.getElementById('csvBank').value;
- var cb='csvCallback_'+Date.now();
- var result=await new Promise(function(resolve,reject){
+function _sendCsvChunk(chunk,idx,total,sessionId,bankHint){
+ return new Promise(function(resolve,reject){
+ var cb='csvChunkCallback_'+Date.now()+'_'+idx;
  var s=document.createElement('script');
  var timer=setTimeout(function(){
  delete window[cb];
@@ -810,8 +803,11 @@ async function analyzeCSV(){
  if(data&&data.success){resolve(data);}
  else{reject(new Error((data&&data.message)||'解析失敗'));}
  };
- var base64=btoa(unescape(encodeURIComponent(text)));
- var url=GAS_URL+'?csv='+encodeURIComponent(base64)+'&bankHint='+encodeURIComponent(bankHint)+'&callback='+cb;
+ var url=GAS_URL+'?csvChunk='+encodeURIComponent(chunk)
+ +'&csvChunkIndex='+idx+'&csvChunkTotal='+total
+ +'&csvSessionId='+encodeURIComponent(sessionId)
+ +'&bankHint='+encodeURIComponent(bankHint)
+ +'&callback='+cb;
  s.src=url;
  s.onerror=function(){
  clearTimeout(timer);
@@ -821,6 +817,29 @@ async function analyzeCSV(){
  };
  document.body.appendChild(s);
  });
+}
+
+async function analyzeCSV(){
+ if(!csvFile)return;
+ document.getElementById('csvAnalyzeBtn').disabled=true;
+ document.getElementById('csvLoading').classList.add('show');
+ document.getElementById('csvError').classList.remove('show');
+ try{
+ var text=await readCSVText(csvFile);
+ var bankHint=document.getElementById('csvBank').value;
+ var base64=btoa(unescape(encodeURIComponent(text)));
+ var CHUNK_SIZE=3000;
+ var chunks=[];
+ for(var ci=0;ci<base64.length;ci+=CHUNK_SIZE){
+ chunks.push(base64.slice(ci,ci+CHUNK_SIZE));
+ }
+ if(chunks.length===0)chunks.push('');
+ var sessionId='csv_'+Date.now()+'_'+Math.floor(Math.random()*100000);
+ var result=null;
+ for(var idx=0;idx<chunks.length;idx++){
+ document.getElementById('csvLoading').innerHTML='<div class="spinner-sm"></div>解析中... ('+(idx+1)+'/'+chunks.length+')';
+ result=await _sendCsvChunk(chunks[idx],idx,chunks.length,sessionId,bankHint);
+ }
  document.getElementById('csvLoading').classList.remove('show');
  var type=result.type||'transactions';
  if(type==='securities'){
@@ -844,6 +863,9 @@ async function analyzeCSV(){
  showError('csvError','CSVの種類を判定できませんでした。金融機関の選択を変えて試すか、内容をご確認ください。'+diag);
  }else{
  reviewData.csv=result.entries||[];
+ if(bankHint&&bankHint!=='自動判定'){
+ reviewData.csv.forEach(function(en){ if(!en.memo)en.memo=bankHint; });
+ }
  if(!reviewData.csv.length){showError('csvError','取引データが見つかりませんでした。');}
  else{renderReview('csv');}
  if(result.bankBalance){
@@ -862,6 +884,14 @@ async function analyzeCSV(){
 function renderReview(kind){
  var allCats=CATEGORIES.expense.concat(CATEGORIES.income);
  document.getElementById(kind+'Review').innerHTML=reviewData[kind].map(function(e,i){
+ var curAcc=e.memo||'';
+ var accOpts=BANK_NAME_OPTIONS.slice();
+ if(curAcc&&accOpts.indexOf(curAcc)===-1)accOpts=[curAcc].concat(accOpts);
+ var accSelectHtml='<select onchange="updateReviewAccount(\''+kind+'\','+i+',this.value)">'
+ +'<option value=""'+(curAcc===''?' selected':'')+'>口座未指定</option>'
+ +accOpts.map(function(opt){return '<option value="'+escapeAttr(opt)+'"'+(opt===curAcc?' selected':'')+'>'+escapeHtml(opt)+'</option>';}).join('')
+ +'<option value="__other__">その他（入力する）</option>'
+ +'</select>';
  return '<div class="review-item">'+
  '<input type="date" value="'+e.date+'" onchange="reviewData[\''+kind+'\']['+i+'].date=this.value" style="width:110px">'+
  '<input type="text" class="desc-input" value="'+escapeAttr(e.description)+'" placeholder="内容" onchange="reviewData[\''+kind+'\']['+i+'].description=this.value">'+
@@ -873,6 +903,7 @@ function renderReview(kind){
  '<option value="bank"'+(e.source!=='card'?' selected':'')+'>銀行</option>'+
  '<option value="card"'+(e.source==='card'?' selected':'')+'>カード</option>'+
  '</select>'+
+ accSelectHtml+
  '<button class="remove-btn" onclick="removeReviewItem(\''+kind+'\','+i+')">✕</button>'+
  '</div>';
  }).join('');
@@ -881,9 +912,19 @@ function renderReview(kind){
  document.getElementById(kind+'ConfirmBtn').classList.add('show');
 }
 
+function updateReviewAccount(kind,idx,val){
+ if(val==='__other__'){
+ var name=window.prompt('口座名を入力してください（除外設定を使う場合は「口座設定」シートの登録名と一致させてください）',reviewData[kind][idx].memo||'');
+ if(name!==null)reviewData[kind][idx].memo=name.trim();
+ }else{
+ reviewData[kind][idx].memo=val;
+ }
+ renderReview(kind);
+}
+
 function addReviewItem(kind){
  var allCats=CATEGORIES.expense.concat(CATEGORIES.income);
- reviewData[kind].push({date:new Date().toISOString().slice(0,10),description:'',category:allCats[0],type:'expense',amount:0,source:'bank'});
+ reviewData[kind].push({date:new Date().toISOString().slice(0,10),description:'',category:allCats[0],type:'expense',amount:0,source:'bank',memo:''});
  renderReview(kind);
 }
 
@@ -1105,32 +1146,4 @@ function showError(id,msg){
 function escapeHtml(str){
  var d=document.createElement('div');
  d.textContent=str;
- return d.innerHTML;
-}
-
-function escapeAttr(str){
- return String(str).replace(/"/g,'&quot;');
-}
-
-function fileToBase64(file){
- return new Promise(function(resolve,reject){
- var r=new FileReader();
- r.onload=function(){resolve(r.result.split(',')[1]);};
- r.onerror=reject;
- r.readAsDataURL(file);
- });
-}
-
-function readCSVText(file){
- return new Promise(function(resolve,reject){
- var r=new FileReader();
- r.onload=function(e){resolve(e.target.result);};
- r.onerror=reject;
- r.readAsText(file,'Shift_JIS');
- });
-}
-
-init();
-</script>
-</body>
-</html>
+ return d.innerHTML
