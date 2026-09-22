@@ -224,8 +224,12 @@ select.csv-bank{width:100%;background:var(--paper);color:var(--ink);border:none;
 <script>
 var CATEGORIES={expense:['食費','日用品','交通費','光熱費','通信費','医療費','住居費','保険','娯楽','教育','その他'],income:['給与','ボーナス','副業','その他収入']};
 var CATEGORY_COLORS={'食費':'#c8553d','日用品':'#b8923f','交通費':'#5b8a72','光熱費':'#8a6fb0','通信費':'#4a8fb5','医療費':'#d4756b','住居費':'#7a6a52','保険':'#5f7a8a','娯楽':'#c98a3f','教育':'#5f8a6a','その他':'#8a8478','給与':'#5b8a72','ボーナス':'#4a8fb5','副業':'#b8923f','その他収入':'#8a8478'};
-var PAYMENT_METHODS=['銀行振込','口座引き落とし','現金','楽天カード','三井住友カード','エポスカード','viewカード','PayPayカード','その他'];
-var CARD_METHODS=['楽天カード','三井住友カード','エポスカード','viewカード','PayPayカード'];
+var PAYMENT_METHODS=['銀行振込','口座引き落とし','現金','楽天カード','三井住友カード','エポスカード','viewカード','PayPayカード','Vネオバンクデビット','その他'];
+var CARD_METHODS=['楽天カード','三井住友カード','エポスカード','viewカード','PayPayカード','Vネオバンクデビット'];
+// デビットカードなど、口座タグの選択だけで自動的にカード(card)ブロックへ分類したい口座名の一覧。
+// CSV/写真解析はGeminiがbank/cardを判定するが、デビットカードの明細は銀行口座自体の取引として
+// 出てくることが多くbank判定されがちなため、この口座タグが選ばれた時点でsourceを強制的にcardにする。
+var DEBIT_CARD_ACCOUNTS=['Vネオバンクデビット'];
 var GAS_URL='https://script.google.com/macros/s/AKfycbywTGVhzC5jpptxHcUSjqMFkpz-1AMxTRxc2xzs3SDpy-Lqjdo7Y_X3UHmB53tDiaoW/exec';
 var GOOGLE_API_KEY='AIzaSyACUoVTzF-p11tpirudJzqBjEJ3mxZBLmQ';
 var GOOGLE_CLIENT_ID='958314442221-jqh28oakgll8goaih2r5cqmvd070k3im.apps.googleusercontent.com';
@@ -868,7 +872,10 @@ async function analyzeCSV(){
  }else{
  reviewData.csv=result.entries||[];
  if(bankHint&&bankHint!=='自動判定'){
- reviewData.csv.forEach(function(en){ if(!en.memo)en.memo=bankHint; });
+ reviewData.csv.forEach(function(en){
+ if(!en.memo)en.memo=bankHint;
+ if(DEBIT_CARD_ACCOUNTS.indexOf(en.memo)!==-1)en.source='card';
+ });
  }
  if(!reviewData.csv.length){showError('csvError','取引データが見つかりませんでした。');}
  else{renderReview('csv');}
@@ -922,6 +929,7 @@ function updateReviewAccount(kind,idx,val){
  if(name!==null)reviewData[kind][idx].memo=name.trim();
  }else{
  reviewData[kind][idx].memo=val;
+ if(DEBIT_CARD_ACCOUNTS.indexOf(val)!==-1)reviewData[kind][idx].source='card';
  }
  renderReview(kind);
 }
