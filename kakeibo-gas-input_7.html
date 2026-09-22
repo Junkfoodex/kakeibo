@@ -184,6 +184,8 @@ select.csv-bank{width:100%;background:var(--paper);color:var(--ink);border:none;
  <option value="エポスカード">エポスカード</option>
  <option value="viewカード">viewカード</option>
  <option value="三井住友カード">三井住友カード</option>
+ <option value="Vネオバンク">Vネオバンク</option>
+ <option value="Vネオバンクデビット">Vネオバンクデビット</option>
  <option value="楽天証券">楽天証券</option>
  <option value="SBI証券">SBI証券</option>
  </select>
@@ -231,7 +233,7 @@ var DRIVE_FOLDER_ID='1B2mAntpJJV3sCKza08r_LZ4VqC2BwlxQ';
 var manualType='expense',photoFile=null,selectedFiles=[],csvFile=null,reviewData={photo:[],csv:[]},recentEntries=[],accessToken=null;
 var securitiesData=[],idecoDataList=[],bankBalanceDataList=[],currentSheetName=null;
 var securitiesSource='photo',bankBalanceSource='photo';
-var BANK_NAME_OPTIONS=['楽天銀行','三菱UFJ銀行','ゆうちょ銀行','三井住友銀行','あおぞら銀行','楽天カード','エポスカード','viewカード','三井住友カード','楽天証券','SBI証券'];
+var BANK_NAME_OPTIONS=['楽天銀行','三菱UFJ銀行','ゆうちょ銀行','三井住友銀行','あおぞら銀行','Vネオバンク','Vネオバンクデビット','楽天カード','エポスカード','viewカード','三井住友カード','楽天証券','SBI証券'];
 // ファイル名に含まれるキーワードから金融機関を推測するためのパターン一覧。
 // カード/銀行/証券で同じ会社名（楽天・三井住友等）が重複するため、より具体的なもの
 // （証券・カード）を先に判定し、最後に銀行にフォールバックする順序にしている。
@@ -241,6 +243,8 @@ var BANK_FILENAME_PATTERNS=[
  [/楽天銀行|rakuten[-_ ]?bank/i,'楽天銀行'],
  [/三井住友カード|smcc/i,'三井住友カード'],
  [/三井住友銀行|smbc/i,'三井住友銀行'],
+ [/Vネオバンクデビット|v[-_ ]?neobank[-_ ]?debit/i,'Vネオバンクデビット'],
+ [/Vネオバンク|v[-_ ]?neobank/i,'Vネオバンク'],
  [/三菱UFJ|三菱東京|mufg/i,'三菱UFJ銀行'],
  [/ゆうちょ|yucho/i,'ゆうちょ銀行'],
  [/あおぞら|aozora/i,'あおぞら銀行'],
