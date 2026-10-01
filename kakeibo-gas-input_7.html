@@ -137,6 +137,10 @@ select.csv-bank{width:100%;background:var(--paper);color:var(--ink);border:none;
  </div>
  <div class="input-panel" id="panel-photo">
  <button class="btn-drive" onclick="openDrivePicker()">📂 家計簿スクショから選択</button>
+ <div style="margin-top:8px;">
+ <label style="display:block;font-size:10px;color:var(--text-soft);margin-bottom:4px">選択先フォルダ（IDまたはGoogleドライブのリンクを貼り付け・空欄でデフォルト）</label>
+ <input type="text" id="driveFolderInput" placeholder="例: https://drive.google.com/drive/folders/XXXXXXXX" onchange="saveDriveFolderSetting()" style="width:100%;background:var(--paper);color:var(--ink);border:none;border-radius:8px;padding:8px 10px;font-size:12px;font-family:inherit">
+ </div>
  <div class="upload-zone" style="margin-top:10px;">
  <input type="file" id="photoInput" accept="image/*">
  <div class="icon">📷</div>
@@ -233,7 +237,41 @@ var DEBIT_CARD_ACCOUNTS=['Vネオバンクデビット'];
 var GAS_URL='https://script.google.com/macros/s/AKfycbywTGVhzC5jpptxHcUSjqMFkpz-1AMxTRxc2xzs3SDpy-Lqjdo7Y_X3UHmB53tDiaoW/exec';
 var GOOGLE_API_KEY='AIzaSyACUoVTzF-p11tpirudJzqBjEJ3mxZBLmQ';
 var GOOGLE_CLIENT_ID='958314442221-jqh28oakgll8goaih2r5cqmvd070k3im.apps.googleusercontent.com';
-var DRIVE_FOLDER_ID='1B2mAntpJJV3sCKza08r_LZ4VqC2BwlxQ';
+var DEFAULT_DRIVE_FOLDER_ID='1B2mAntpJJV3sCKza08r_LZ4VqC2BwlxQ';
+// 写真選択フォルダ。ローカル設定(localStorage)で上書き可能にし、このブラウザ・端末では
+// 次回以降も指定したフォルダが使われるようにする（他の端末・ブラウザには影響しない）。
+var DRIVE_FOLDER_ID=DEFAULT_DRIVE_FOLDER_ID;
+
+// Googleドライブのフォルダリンク（https://drive.google.com/drive/folders/XXXXX...）
+// からフォルダIDだけを取り出す。IDがそのまま貼られていた場合はそのまま返す。
+function _extractFolderId(input){
+ if(!input)return '';
+ var m=input.match(/folders\/([a-zA-Z0-9_-]+)/);
+ if(m)return m[1];
+ return input.trim();
+}
+
+// ページ読み込み時にローカル設定を復元する
+function loadDriveFolderSetting(){
+ var saved=localStorage.getItem('kakeibo_drive_folder_id');
+ if(saved){
+ DRIVE_FOLDER_ID=saved;
+ document.getElementById('driveFolderInput').value=saved;
+ }
+}
+
+// フォルダ欄が変更されたら保存する。空欄に戻せばデフォルトのフォルダに戻る。
+function saveDriveFolderSetting(){
+ var raw=document.getElementById('driveFolderInput').value.trim();
+ if(!raw){
+ localStorage.removeItem('kakeibo_drive_folder_id');
+ DRIVE_FOLDER_ID=DEFAULT_DRIVE_FOLDER_ID;
+ return;
+ }
+ var id=_extractFolderId(raw) || DEFAULT_DRIVE_FOLDER_ID;
+ DRIVE_FOLDER_ID=id;
+ localStorage.setItem('kakeibo_drive_folder_id', id);
+}
 var manualType='expense',photoFile=null,selectedFiles=[],csvFile=null,reviewData={photo:[],csv:[]},recentEntries=[],accessToken=null;
 var securitiesData=[],idecoDataList=[],bankBalanceDataList=[],currentSheetName=null;
 var securitiesSource='photo',bankBalanceSource='photo';
@@ -277,6 +315,7 @@ function init(){
  document.getElementById('mDate').value=new Date().toISOString().slice(0,10);
  updateCategoryOptions();
  populatePaymentMethods();
+ loadDriveFolderSetting();
 }
 
 function updateCategoryOptions(){
@@ -344,7 +383,10 @@ function sendToSheet(entries){
  else{reject(new Error((data&&data.message)||'保存失敗'));}
  };
  var url=GAS_URL+'?entries='+encodeURIComponent(JSON.stringify(cleanEntries))+'&callback='+cb;
- if(moveFileIds.length)url+='&moveFileIds='+encodeURIComponent(JSON.stringify(moveFileIds));
+ if(moveFileIds.length){
+ url+='&moveFileIds='+encodeURIComponent(JSON.stringify(moveFileIds));
+ url+='&sourceFolderId='+encodeURIComponent(DRIVE_FOLDER_ID);
+ }
  s.src=url;
  s.onerror=function(){
  clearTimeout(timer);
@@ -376,7 +418,10 @@ function sendHoldingsToSheet(holdings){
  };
  var url=GAS_URL+'?holdings='+encodeURIComponent(JSON.stringify(cleanHoldings))+'&callback='+cb;
  if(currentSheetName)url+='&sheetName='+encodeURIComponent(currentSheetName);
- if(moveFileIds.length)url+='&moveFileIds='+encodeURIComponent(JSON.stringify(moveFileIds));
+ if(moveFileIds.length){
+ url+='&moveFileIds='+encodeURIComponent(JSON.stringify(moveFileIds));
+ url+='&sourceFolderId='+encodeURIComponent(DRIVE_FOLDER_ID);
+ }
  s.src=url;
  s.onerror=function(){
  clearTimeout(timer);
@@ -408,7 +453,10 @@ function sendIdecoToSheet(ideco){
  };
  var url=GAS_URL+'?ideco='+encodeURIComponent(JSON.stringify(cleanIdeco))+'&callback='+cb;
  if(currentSheetName)url+='&sheetName='+encodeURIComponent(currentSheetName);
- if(moveFileIds.length)url+='&moveFileIds='+encodeURIComponent(JSON.stringify(moveFileIds));
+ if(moveFileIds.length){
+ url+='&moveFileIds='+encodeURIComponent(JSON.stringify(moveFileIds));
+ url+='&sourceFolderId='+encodeURIComponent(DRIVE_FOLDER_ID);
+ }
  s.src=url;
  s.onerror=function(){
  clearTimeout(timer);
@@ -440,7 +488,10 @@ function sendBankBalanceToSheet(bb){
  };
  var url=GAS_URL+'?bankBalance='+encodeURIComponent(JSON.stringify(cleanData))+'&callback='+cb;
  if(currentSheetName)url+='&sheetName='+encodeURIComponent(currentSheetName);
- if(moveFileIds.length)url+='&moveFileIds='+encodeURIComponent(JSON.stringify(moveFileIds));
+ if(moveFileIds.length){
+ url+='&moveFileIds='+encodeURIComponent(JSON.stringify(moveFileIds));
+ url+='&sourceFolderId='+encodeURIComponent(DRIVE_FOLDER_ID);
+ }
  s.src=url;
  s.onerror=function(){
  clearTimeout(timer);
