@@ -581,11 +581,18 @@ function showPicker(){
 var currentPicker=null;
 
 function buildAndShowPicker(){
- var view=new google.picker.View(google.picker.ViewId.DOCS_IMAGES);
- view.setParent(DRIVE_FOLDER_ID);
+ // 1つ目のタブ: 指定フォルダ内に固定表示（setParentにより、そのフォルダ内に限定される）。
+ // これを最初に追加することで、Pickerを開いた時にデフォルトで表示されるタブになる。
+ var folderView=new google.picker.View(google.picker.ViewId.DOCS_IMAGES);
+ folderView.setParent(DRIVE_FOLDER_ID);
+ folderView.setLabel('指定フォルダ');
+ // 2つ目のタブ: 制限なし。ここから他の場所にも自由に移動できる。
+ var allView=new google.picker.View(google.picker.ViewId.DOCS_IMAGES);
+ allView.setLabel('マイドライブ全体');
  currentPicker=new google.picker.PickerBuilder()
  .setTitle('家計簿スクショを選択（複数選択可）')
- .addView(view)
+ .addView(folderView)
+ .addView(allView)
  .setOAuthToken(accessToken)
  .setDeveloperKey(GOOGLE_API_KEY)
  .enableFeature(google.picker.Feature.MULTISELECT_ENABLED)
