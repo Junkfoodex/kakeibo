@@ -581,14 +581,25 @@ function showPicker(){
 var currentPicker=null;
 
 function buildAndShowPicker(){
- // 1つ目のタブ: 指定フォルダ内に固定表示（setParentにより、そのフォルダ内に限定される）。
- // これを最初に追加することで、Pickerを開いた時にデフォルトで表示されるタブになる。
- var folderView=new google.picker.View(google.picker.ViewId.DOCS_IMAGES);
- folderView.setParent(DRIVE_FOLDER_ID);
- folderView.setLabel('指定フォルダ');
- // 2つ目のタブ: 制限なし。ここから他の場所にも自由に移動できる。
- var allView=new google.picker.View(google.picker.ViewId.DOCS_IMAGES);
- allView.setLabel('マイドライブ全体');
+ // DOCS_IMAGES（ギャラリー表示専用ビュー）はフォルダ階層を移動する機能自体を持たないため、
+ // 代わりにフォルダ移動（パンくずでの上の階層・他フォルダへの移動）に対応した
+ // DocsViewを使う。setIncludeFolders(true)でフォルダ表示・移動を有効にし、
+ // setSelectFolderEnabled(false)でフォルダ自体は選択不可（ファイルのみ選択可）にする。
+ // mimeTypesで画像のみに絞り込む。
+ var IMAGE_MIME_TYPES='image/png,image/jpeg,image/jpg,image/gif,image/webp,image/heic';
+ // 1つ目のタブ: 指定フォルダを起点に開く（移動は自由にできる）。
+ var folderView=new google.picker.DocsView(google.picker.ViewId.DOCS)
+ .setIncludeFolders(true)
+ .setSelectFolderEnabled(false)
+ .setMimeTypes(IMAGE_MIME_TYPES)
+ .setParent(DRIVE_FOLDER_ID)
+ .setLabel('指定フォルダ');
+ // 2つ目のタブ: マイドライブのルートから開く。
+ var allView=new google.picker.DocsView(google.picker.ViewId.DOCS)
+ .setIncludeFolders(true)
+ .setSelectFolderEnabled(false)
+ .setMimeTypes(IMAGE_MIME_TYPES)
+ .setLabel('マイドライブ全体');
  currentPicker=new google.picker.PickerBuilder()
  .setTitle('家計簿スクショを選択（複数選択可）')
  .addView(folderView)
