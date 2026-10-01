@@ -139,7 +139,7 @@ select.csv-bank{width:100%;background:var(--paper);color:var(--ink);border:none;
  <button class="btn-drive" onclick="openDrivePicker()">📂 家計簿スクショから選択</button>
  <div style="margin-top:8px;">
  <label style="display:block;font-size:10px;color:var(--text-soft);margin-bottom:4px">選択先フォルダ（IDまたはGoogleドライブのリンクを貼り付け・空欄でデフォルト）</label>
- <input type="text" id="driveFolderInput" placeholder="例: https://drive.google.com/drive/folders/XXXXXXXX" onchange="saveDriveFolderSetting()" style="width:100%;background:var(--paper);color:var(--ink);border:none;border-radius:8px;padding:8px 10px;font-size:12px;font-family:inherit">
+ <input type="text" id="driveFolderInput" placeholder="例: https://drive.google.com/drive/folders/XXXXXXXX" oninput="saveDriveFolderSetting()" style="width:100%;background:var(--paper);color:var(--ink);border:none;border-radius:8px;padding:8px 10px;font-size:12px;font-family:inherit">
  </div>
  <div class="upload-zone" style="margin-top:10px;">
  <input type="file" id="photoInput" accept="image/*">
